@@ -23,9 +23,7 @@ npx skills add vercel-labs/skills@find-skills -g -y
 
 自动分析代码改动并生成符合规范的commit信息
 
-```bash
-npx skills add /Users/bytedance/Desktop/my/xiy-skills/skills/commit-message-generator -g -y
-```
+
 
 功能特性：
 
@@ -40,9 +38,7 @@ npx skills add /Users/bytedance/Desktop/my/xiy-skills/skills/commit-message-gene
 
 管理和推荐skills的skill，当用户询问该用什么skill时，列出可用的skills、推荐场景和推荐理由
 
-```bash
-npx skills add /Users/bytedance/Desktop/my/xiy-skills/skills/skill-manager -g -y
-```
+
 
 功能特性：
 
