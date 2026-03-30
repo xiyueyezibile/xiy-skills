@@ -75,6 +75,20 @@ description: 团队踩坑收集器。无论用户问什么，默认都先调用�
 python3 scripts/upsert_pitfall.py --type <mcp|git|docs> --json '<json>'
 ```
 
+`<json>` 支持两套字段写法（都会被映射到条目模板）：
+
+- **基础字段**: `title`, `tags`, `conclusion`, `reasons`, `wrong`, `right`, `min_examples`, `scope_ok`, `scope_no`
+- **扩展字段（兼容写法）**:
+  - `id`: 可选，形如 `P-123`，用于指定条目 ID
+  - `tags`: 既支持字符串也支持数组（会自动拼成逗号分隔）
+  - `one_liner` → `conclusion`
+  - `why_wrong` → `reasons`
+  - `anti_patterns` → `wrong`
+  - `best_practices` → `right`
+  - `minimal_example` → `min_examples`
+  - `scope.apply` → `scope_ok`
+  - `scope.not_apply` → `scope_no`
+
 7. 脚本会自动完成：
    - 新增条目：写入对应分类文件顶部（紧跟第一个 `## ...` 标题行下面）
    - 新增条目：追加一行到 [INDEX.md](references/INDEX.md)

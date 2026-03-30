@@ -27,6 +27,7 @@ TYPE_TO_FILE = {
     "docs": "docs-and-portability.md",
 }
 
+_PITFALL_ID_RE = re.compile(r"^P-\d{3}$")
 
 def _today() -> str:
     return _dt.date.today().isoformat()
@@ -207,24 +208,94 @@ def _find_by_title(index_rows: list[tuple[str, str, str, str]], title: str) -> O
     return None
 
 
+def _find_by_id(index_rows: list[tuple[str, str, str, str]], pid: str) -> Optional[Tuple[str, str, str]]:
+    p = pid.strip()
+    for row_pid, row_title, row_tags, file_name in index_rows:
+        if row_pid.strip() == p:
+            return row_title.strip(), row_tags.strip(), file_name.strip()
+    return None
+
+
+def _coerce_str_list(v) -> list[str]:
+    if v is None:
+        return []
+    if isinstance(v, list):
+        return [str(x).strip() for x in v if str(x).strip()]
+    if isinstance(v, str):
+        s = v.strip()
+        return [s] if s else []
+    return [str(v).strip()] if str(v).strip() else []
+
+
+def _coerce_tags(v) -> str:
+    if v is None:
+        return ""
+    if isinstance(v, list):
+        items = [str(x).strip() for x in v if str(x).strip()]
+        return ", ".join(items)
+    return str(v).strip()
+
+
+def _pitfall_from_json_obj(obj: dict) -> Pitfall:
+    title = str(obj.get("title", "")).strip()
+    tags = _coerce_tags(obj.get("tags"))
+
+    conclusion = str(obj.get("conclusion", "")).strip()
+    if not conclusion:
+        conclusion = str(obj.get("one_liner", "")).strip()
+    if not conclusion:
+        conclusion = str(obj.get("one_liner_cn", "")).strip()
+
+    reasons = _coerce_str_list(obj.get("reasons"))
+    if not reasons:
+        reasons = _coerce_str_list(obj.get("why_wrong"))
+
+    wrong = _coerce_str_list(obj.get("wrong"))
+    if not wrong:
+        wrong = _coerce_str_list(obj.get("anti_patterns"))
+
+    right = _coerce_str_list(obj.get("right"))
+    if not right:
+        right = _coerce_str_list(obj.get("best_practices"))
+
+    min_examples = _coerce_str_list(obj.get("min_examples"))
+    if not min_examples:
+        min_examples = _coerce_str_list(obj.get("minimal_example"))
+    if not min_examples:
+        min_examples = _coerce_str_list(obj.get("minimal_examples"))
+
+    scope_ok = str(obj.get("scope_ok", "")).strip()
+    scope_no = str(obj.get("scope_no", "")).strip()
+    scope = obj.get("scope")
+    if isinstance(scope, dict):
+        if not scope_ok:
+            scope_ok = str(scope.get("apply", "")).strip()
+        if not scope_no:
+            scope_no = str(scope.get("not_apply", "")).strip()
+
+    return Pitfall(
+        title=title,
+        tags=tags,
+        conclusion=conclusion,
+        reasons=reasons,
+        wrong=wrong,
+        right=right,
+        min_examples=min_examples,
+        scope_ok=scope_ok,
+        scope_no=scope_no,
+    )
+
+
 def _load_payload(args: argparse.Namespace) -> Pitfall:
     if args.json:
         obj = json.loads(args.json)
-        return Pitfall(
-            title=str(obj.get("title", "")).strip(),
-            tags=str(obj.get("tags", "")).strip(),
-            conclusion=str(obj.get("conclusion", "")).strip(),
-            reasons=[str(x).strip() for x in obj.get("reasons", []) if str(x).strip()],
-            wrong=[str(x).strip() for x in obj.get("wrong", []) if str(x).strip()],
-            right=[str(x).strip() for x in obj.get("right", []) if str(x).strip()],
-            min_examples=[str(x).strip() for x in obj.get("min_examples", []) if str(x).strip()],
-            scope_ok=str(obj.get("scope_ok", "")).strip(),
-            scope_no=str(obj.get("scope_no", "")).strip(),
-        )
+        if not isinstance(obj, dict):
+            raise SystemExit("--json must be a JSON object")
+        return _pitfall_from_json_obj(obj)
     return Pitfall(
-        title=args.title.strip(),
-        tags=args.tags.strip(),
-        conclusion=args.conclusion.strip(),
+        title=(args.title or "").strip(),
+        tags=(args.tags or "").strip(),
+        conclusion=(args.conclusion or "").strip(),
         reasons=[x.strip() for x in (args.reason or []) if x.strip()],
         wrong=[x.strip() for x in (args.wrong or []) if x.strip()],
         right=[x.strip() for x in (args.right or []) if x.strip()],
@@ -232,6 +303,44 @@ def _load_payload(args: argparse.Namespace) -> Pitfall:
         scope_ok=(args.scope_ok or "").strip(),
         scope_no=(args.scope_no or "").strip(),
     )
+
+
+def _desired_id_from_args(args: argparse.Namespace) -> Optional[str]:
+    if not args.json:
+        return None
+    obj = json.loads(args.json)
+    if not isinstance(obj, dict):
+        return None
+    pid = str(obj.get("id", "")).strip()
+    if not pid:
+        return None
+    if not _PITFALL_ID_RE.match(pid):
+        return None
+    return pid
+
+
+def _update_index_row(index_text: str, pid: str, title: Optional[str], tags: Optional[str]) -> str:
+    if not title and not tags:
+        return index_text
+    lines = index_text.splitlines(keepends=True)
+    out: list[str] = []
+    replaced = False
+    for line in lines:
+        m = _INDEX_ROW_RE.match(line.rstrip("\n"))
+        if not m:
+            out.append(line)
+            continue
+        row_pid, row_title, row_tags, row_file = m.group(1), m.group(2), m.group(3), m.group(4)
+        if row_pid.strip() != pid:
+            out.append(line)
+            continue
+        new_title = title.strip() if title else row_title.strip()
+        new_tags = tags.strip() if tags else row_tags.strip()
+        out.append(f"| {pid} | {new_title} | {new_tags} | {row_file.strip()} |\n")
+        replaced = True
+    if not replaced:
+        return index_text
+    return "".join(out)
 
 
 def main() -> int:
@@ -264,6 +373,7 @@ def main() -> int:
         index_text = _read_text(index_path)
     index_rows = _parse_index_rows(index_text)
 
+    desired_id = _desired_id_from_args(args)
     pitfall = _load_payload(args)
     if not pitfall.title:
         raise SystemExit("missing title")
@@ -271,6 +381,11 @@ def main() -> int:
         pitfall = dataclasses.replace(pitfall, conclusion="TODO")
 
     existing = _find_by_title(index_rows, pitfall.title)
+    if not existing and desired_id:
+        by_id = _find_by_id(index_rows, desired_id)
+        if by_id:
+            _title, _tags, file_name = by_id
+            existing = (desired_id, file_name)
     if existing:
         pid, file_name = existing
         target_file = references_dir / file_name
@@ -280,13 +395,18 @@ def main() -> int:
         after = _update_existing_pitfall_block(before, pid)
         if before == after:
             raise SystemExit("existing pitfall found but block not updated")
+        idx_after = _update_index_row(index_text, pid, pitfall.title if pitfall.title else None, pitfall.tags if pitfall.tags else None)
         if args.dry_run:
             print(_unified_diff(before, after, _rel(repo_root, target_file), _rel(repo_root, target_file)))
+            if idx_after != index_text:
+                print(_unified_diff(index_text, idx_after, _rel(repo_root, index_path), _rel(repo_root, index_path)))
         else:
             _write_text(target_file, after)
+            if idx_after != index_text:
+                _write_text(index_path, idx_after)
         return 0
 
-    pid = _next_id([r[0] for r in index_rows])
+    pid = desired_id or _next_id([r[0] for r in index_rows])
     file_name = (args.file or "").strip()
     if not file_name:
         if not args.type:
