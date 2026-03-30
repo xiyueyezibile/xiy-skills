@@ -64,7 +64,7 @@ description: 管理和推荐skills的skill，当用户询问该用什么skill时
 - **描述**: 自动分析代码改动并生成符合规范的commit信息
 - **推荐场景**: 需要提交代码、生成commit信息、遵循Conventional Commits规范
 - **推荐理由**: 可以自动分析git diff，智能识别改动类型，生成一条简洁的commit信息
-- **安装命令**: `npx skills add /Users/bytedance/Desktop/my/xiy-skills/skills/commit-message-generator -g -y`
+- **安装命令**: `npx skills add <owner>/<repo>@commit-message-generator -g -y`
 
 ### 2. find-skills
 - **描述**: 帮助用户发现和安装agent skills
