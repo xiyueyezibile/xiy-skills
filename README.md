@@ -48,6 +48,17 @@ npx skills add vercel-labs/skills@find-skills -g -y
 - 列出所有可用的skills供用户选择
 - 提供安装命令和详细信息
 
+### team-pitfalls
+
+团队踩坑收集器：对话中出现易错点时，按标准沉淀到skill里
+
+功能特性：
+
+- 只记录“新同学不看大概率会写错”的可复用问题
+- 先做通用模式判断，再决定是否写入
+- 对同类问题做去重与累计次数
+- 约束不记录密钥、token、cookie 等敏感信息
+
 ### superpowers
 
 覆盖全流程的工作流系统
