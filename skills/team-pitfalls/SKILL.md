@@ -69,10 +69,22 @@ description: 团队踩坑收集器。无论用户问什么，默认都先调用�
 5. 写入前先去重：
    - 标题/关键词高度相似 → 更新既有条目（count + 1，补充示例/症状/解决方案）
    - 不相似 → 新增条目
-6. 把条目写入选中的 references 文件（而不是写回 SKILL.md）
-7. 同步更新 [INDEX.md](references/INDEX.md)：
-   - 新增条目：补一行索引（ID、标题、标签、文件）
-   - 更新条目：更新“最近出现”“出现次数”
+6. 用脚本执行写入与更新（优先使用脚本，不要手工改文件）：
+
+```bash
+python3 scripts/upsert_pitfall.py --type <mcp|git|docs> --json '<json>'
+```
+
+7. 脚本会自动完成：
+   - 新增条目：写入对应分类文件顶部（紧跟第一个 `## ...` 标题行下面）
+   - 新增条目：追加一行到 [INDEX.md](references/INDEX.md)
+   - 已存在条目：更新“最近出现”“出现次数”
+
+8. 如果只是想预览变更，不落盘：
+
+```bash
+python3 scripts/upsert_pitfall.py --dry-run --type <mcp|git|docs> --json '<json>'
+```
 
 ## 新增位置规则（必须遵循）
 
