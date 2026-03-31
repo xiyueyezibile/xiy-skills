@@ -57,11 +57,17 @@ description: 团队踩坑收集器。只要用户提到“收集问题/踩坑/�
 
 > 新加入团队的工程师，不看这条 SKILL，写类似功能时大概率会写错吗？是则写入，否则跳过。
 
-额外约束：
+**核心约束（必须满足）：**
 
+- **必须是通用规则**：只能写入跨业务、跨项目可复用的通用模式/原则/陷阱，**绝对不能包含特定业务含义**
 - 先判断是否是通用、可复用的模式，再决定是否写入
 - 值得写入的：Web 开发者不会自然想到的模式、跨端/平台差异、工具链陷阱、流程陷阱、隐性约束
-- 不该写入的：React 基础知识、特定组件的一次性实现细节、具体的 bug fix
+- **绝对不该写入的**：
+  - React/Vue 等框架基础知识（任何合格前端都应掌握的内容）
+  - 特定业务系统的实现细节、业务逻辑、业务约束
+  - 某一个项目/页面的一次性实现细节
+  - 具体的 bug fix（除非能抽象成通用陷阱模式）
+  - 只对单一工程/单一团队成立的特殊约定
 
 ## 写入流程（每次触发都执行）
 
@@ -105,6 +111,20 @@ python3 skills/team-pitfalls/scripts/upsert_pitfall.py --type <mcp|git|docs> --j
 
 ```bash
 python3 skills/team-pitfalls/scripts/upsert_pitfall.py --dry-run --type <mcp|git|docs> --json '<json>'
+```
+
+## 删除已存在的条目
+
+使用删除脚本移除不再需要的条目，会自动同步 INDEX.md：
+
+```bash
+python3 skills/team-pitfalls/scripts/delete_pitfall.py --id P-001
+```
+
+或者通过标题删除：
+
+```bash
+python3 skills/team-pitfalls/scripts/delete_pitfall.py --title "Commit 信息应优先给一条主线"
 ```
 
 ## 新增位置规则（必须遵循）
