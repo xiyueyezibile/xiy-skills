@@ -96,7 +96,7 @@ git clone https://github.com/mvanhorn/last30days-skill.git ~/.claude/skills/last
 
 ### btc-trading-analyst
 
-BTC 合约交易分析专家
+BTC 合约交易分析专家，10 年加密货币合约交易经验
 
 ```bash
 npx skills add xiyueyezibile/xiy-skills@btc-trading-analyst -g -y
@@ -110,3 +110,7 @@ npx skills add xiyueyezibile/xiy-skills@btc-trading-analyst -g -y
 - 严格的风险控制规则，以损定杠杆
 - 标准化的开仓分析报告输出
 - 支持 50倍、25倍等多种杠杆选择
+- **内置完整的 K 线形态库**（看涨/看跌形态识别）
+- **追涨追空场景库**，包含假突破识别
+- 高胜率 K 线形态筛选标准（位置优先、量能配合、趋势确认）
+- 形态胜率周期差异分析（日线、周线/月线、分钟线）
