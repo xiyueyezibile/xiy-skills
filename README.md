@@ -86,3 +86,10 @@ npx skills add https://github.com/obra/superpowers
 ```bash
 npx skills add https://github.com/anthropics/skills
 ```
+
+### last30days
+
+最近30天的热点搜索
+```
+git clone https://github.com/mvanhorn/last30days-skill.git ~/.claude/skills/last30days
+```
