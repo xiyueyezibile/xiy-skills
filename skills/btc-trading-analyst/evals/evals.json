@@ -1,0 +1,23 @@
+{
+  "skill_name": "btc-trading-analyst",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "请帮我分析当前 BTC 市场并给出开仓建议",
+      "expected_output": "生成一份完整的 BTC 开仓分析报告，包含市场现状、开仓建议、风险评估和操作建议",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "我想了解最近 BTC 的走势，应该做多还是做空？",
+      "expected_output": "基于最近一周的数据和消息面，分析市场走势并给出多空建议",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "请分析最近的市场情绪，并给出 BTC 交易策略",
+      "expected_output": "分析最近 3 天的市场情绪，并结合技术面和消息面给出交易策略",
+      "files": []
+    }
+  ]
+}

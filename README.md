@@ -93,3 +93,20 @@ npx skills add https://github.com/anthropics/skills
 ```
 git clone https://github.com/mvanhorn/last30days-skill.git ~/.claude/skills/last30days
 ```
+
+### btc-trading-analyst
+
+BTC 合约交易分析专家
+
+```bash
+npx skills add xiyueyezibile/xiy-skills@btc-trading-analyst -g -y
+```
+
+功能特性：
+
+- 10年加密货币合约交易经验，专注于 BTC 市场分析
+- 结合技术面、消息面和市场情绪进行综合分析
+- 中短线交易策略，博弈支撑位和阻力位
+- 严格的风险控制规则，以损定杠杆
+- 标准化的开仓分析报告输出
+- 支持 50倍、25倍等多种杠杆选择
