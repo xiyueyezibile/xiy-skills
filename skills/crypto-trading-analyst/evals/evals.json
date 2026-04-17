@@ -1,0 +1,35 @@
+{
+  "skill_name": "crypto-trading-analyst",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "请帮我分析当前 BTC 市场并给出开仓建议",
+      "expected_output": "生成一份完整的 BTC 开仓分析报告，包含市场现状、开仓建议、风险评估和操作建议",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "帮我分析 ETH 的行情，应该做多还是做空？",
+      "expected_output": "生成一份完整的 ETH 开仓分析报告，包含 BTC 相关性分析",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "请分析 SOL 的技术面和消息面，给出开仓策略",
+      "expected_output": "生成一份完整的 SOL 开仓分析报告，使用中价格币种的风险控制规则",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "DOGE 现在怎么样？适合做空吗？",
+      "expected_output": "生成一份完整的 DOGE 开仓分析报告，使用低价格币种的风险控制规则",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "请分析最近的市场情绪",
+      "expected_output": "询问用户要分析哪个加密货币，然后生成报告",
+      "files": []
+    }
+  ]
+}

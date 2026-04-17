@@ -114,3 +114,75 @@ npx skills add xiyueyezibile/xiy-skills@btc-trading-analyst -g -y
 - **追涨追空场景库**，包含假突破识别
 - 高胜率 K 线形态筛选标准（位置优先、量能配合、趋势确认）
 - 形态胜率周期差异分析（日线、周线/月线、分钟线）
+
+### crypto-trading-analyst
+
+任意加密货币合约交易分析专家，支持 BTC、ETH、SOL、DOGE 等主流币种
+
+```bash
+npx skills add xiyueyezibile/xiy-skills@crypto-trading-analyst -g -y
+```
+
+功能特性：
+
+- 支持 BTC、ETH、SOL、DOGE、XRP、AVAX、MATIC、LINK、DOT、ADA 等主流加密货币
+- **分级风险控制**：BTC/ETH 支持 50倍杠杆，其他币种统一使用 5倍杠杆
+- **核心交易哲学**：开仓三要素（位置时机 > 趋势止损 > 止盈复利）
+- **图表交易三前提**：流动性、博弈性、波动性（缺一不可）
+- **折价区间与成交区**：勺柄形态、三底/双底、鲨鱼形态等实战开仓技术
+- **内置完整的 K 线形态库**（看涨/看跌形态识别）
+- **追涨追空场景库**，包含假突破识别
+- 高胜率 K 线形态筛选标准（位置优先、量能配合、趋势确认）
+- 形态胜率周期差异分析（日线、周线/月线、分钟线）
+
+## 本地安装方法
+
+### 方式一：直接复制（推荐）
+
+```bash
+# 克隆或下载此仓库
+git clone https://github.com/xiyueyezibile/xiy-skills.git
+cd xiy-skills
+
+# 复制技能到 Claude 技能目录
+mkdir -p ~/.claude/skills/
+cp -r skills/crypto-trading-analyst ~/.claude/skills/
+
+# 验证安装
+ls -la ~/.claude/skills/crypto-trading-analyst/
+```
+
+### 方式二：使用 skills CLI（需要先安装 skills）
+
+```bash
+# 安装 skills CLI（如果还没有）
+npm install -g @anthropic-ai/skills
+
+# 添加技能
+npx skills add xiyueyezibile/xiy-skills@crypto-trading-analyst -g -y
+```
+
+### 方式三：手动创建符号链接（开发模式）
+
+```bash
+# 克隆仓库
+git clone https://github.com/xiyueyezibile/xiy-skills.git
+cd xiy-skills
+
+# 创建符号链接到 Claude 技能目录
+mkdir -p ~/.claude/skills/
+ln -sf $(pwd)/skills/crypto-trading-analyst ~/.claude/skills/
+
+# 这样修改代码后立即生效，无需重新复制
+```
+
+## 使用示例
+
+安装后，在 Claude 中直接说：
+
+- "帮我分析 BTC 市场并给出开仓建议"
+- "分析 ETH 的行情，应该做多还是做空？"
+- "请分析 SOL 的技术面和消息面"
+- "DOGE 现在怎么样？适合做空吗？"
+
+如果没有指定币种，会先询问您要分析哪个加密货币。
