@@ -56,6 +56,37 @@ npx skills add xiyueyezibile/xiy-skills@skill-manager -g -y
 - 列出所有可用的skills供用户选择
 - 提供安装命令和详细信息
 
+### reply-generator
+
+根据聊天记录、场景描述和模板要求生成自然回复，尽量减少 AI 味，并贴近上下文中的说话习惯
+
+```bash
+npx skills add xiyueyezibile/xiy-skills@reply-generator -g -y
+```
+
+功能特性：
+
+- 支持根据聊天记录、对话片段或场景描述生成回复
+- 支持直接点名模板，或只描述想要的风格
+- 默认提供 `2-3` 个候选回复，并明确给出推荐项
+- 优先模仿上下文中的说话习惯，再结合模板做微调
+- 当场景正式或信息不足时，会自动收敛到更稳的表达
+
+使用示例：
+
+- "帮我回一句，别太官方"
+- "按嘉豪的语气回，轻阴阳一点"
+- "下面这段聊天给我 3 个版本"
+- "帮我回老板一句，礼貌但别太软"
+
+扩展模板：
+
+1. 在 `skills/reply-generator/references/templates/` 下复制 `TEMPLATE.md` 新建一个模板文件
+2. 在 `skills/reply-generator/references/INDEX.md` 里补模板索引
+3. 在 `skills/reply-generator/references/style-mapping.md` 里补风格触发词映射
+
+这样新增模板时通常不需要修改 `SKILL.md`
+
 ### team-pitfalls
 
 团队踩坑收集器：对话中出现易错点时，按标准沉淀到skill里
