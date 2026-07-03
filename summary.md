@@ -4,6 +4,7 @@
 
 1. 将 `team-pitfalls` 从“通用踩坑库”扩展为“通用规则 + 仓库级业务知识池”。
 2. 设计一个新的 `reply-generator` skill，用于基于上下文和模板生成自然回复。
+3. 为仓库 `README.md` 新增一组 Ian 小黑风格的正文配图。
 
 ## 已确认决策
 
@@ -61,6 +62,23 @@
 11. 为了支持后续扩展，新模板按固定骨架维护：
    - `skills/reply-generator/references/templates/TEMPLATE.md` 作为标准模板
    - 新增模板时同步更新 `INDEX.md` 和 `style-mapping.md`
+
+### README 配图
+
+1. 使用 `ian-xiaohei-illustrations` 为仓库 README 生成正文配图。
+2. 不平均配图，只选 3 个认知锚点：
+   - skills 仓库定位与发现
+   - 本地安装/接入
+   - reply-generator 的模板扩展
+3. 采用本地 SVG 资产落盘，而不是依赖外部生图结果。
+4. 资产目录固定为 `assets/readme-illustrations/`。
+5. 当前已生成：
+   - `01-skills-cabinet.svg`
+   - `02-install-machine.svg`
+   - `03-template-growth.svg`
+6. README 已插入对应图片引用，后续新增 README 配图继续沿用该目录。
+7. README 额外补充了第三方 skill 推荐条目：
+   - `https://github.com/helloianneo/ian-xiaohei-illustrations`
 
 ## 已产出文档
 

@@ -1,6 +1,8 @@
 
 ## Skills List
 
+![skills cabinet](assets/readme-illustrations/01-skills-cabinet.svg)
+
 ### find skills
 
 ```bash
@@ -87,6 +89,8 @@ npx skills add xiyueyezibile/xiy-skills@reply-generator -g -y
 
 这样新增模板时通常不需要修改 `SKILL.md`
 
+![template growth](assets/readme-illustrations/03-template-growth.svg)
+
 ### team-pitfalls
 
 团队踩坑收集器：对话中出现易错点时，按标准沉淀到skill里
@@ -109,6 +113,21 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 ```bash
 npx skills add https://github.com/obra/superpowers
 ```
+
+### ian-xiaohei-illustrations
+
+Ian 风格的中文正文配图 skill，适合为文章、帖子、博客、Notion 文档和方法论内容生成小黑怪诞手绘配图
+
+```bash
+npx skills add https://github.com/helloianneo/ian-xiaohei-illustrations
+```
+
+功能特性：
+
+- 面向中文正文配图，而不是商业插画或 PPT 信息图
+- 默认使用小黑 IP、纯白手绘、少量红橙蓝批注的视觉风格
+- 适合流程、结构、状态、隐喻、观点类内容的正文插图
+- 支持先做 shot list，再按单张结构逐张生成
 
 ### skill-creator
 
@@ -167,6 +186,8 @@ npx skills add xiyueyezibile/xiy-skills@crypto-trading-analyst -g -y
 - 形态胜率周期差异分析（日线、周线/月线、分钟线）
 
 ## 本地安装方法
+
+![install machine](assets/readme-illustrations/02-install-machine.svg)
 
 ### 方式一：直接复制（推荐）
 
