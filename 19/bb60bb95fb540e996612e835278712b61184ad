@@ -1,0 +1,116 @@
+docs/articles/2026-07-07-team-pitfalls-self-evolving-skill.md
+  s_d07868f07922f9::t_382b5b11b07e05 131-136 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a4cbfd64bd16cb3a3a282a4","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[131,136]}]}]}
+  s_d07868f07922f9::t_3bb1e78633962d 1-130 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a4cbea34bd16cb3a3a28263","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[1,130]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "19bb60bb95fb540e996612e835278712b61184ad",
+  "prompts": {},
+  "sessions": {
+    "s_d07868f07922f9": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a4cbd3c4bd16cb3a3a281bf",
+        "model": "gpt-5.4__dev",
+        "display_model_name": "GPT-5.4"
+      },
+      "human_author": "潘麒麟 <panqilin.malis@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "docs/articles/2026-07-07-team-pitfalls-self-evolving-skill.md": [
+      {
+        "hash": "s_d07868f07922f9::t_382b5b11b07e05",
+        "line_ranges": [
+          {
+            "Range": [
+              131,
+              136
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a4cbfd64bd16cb3a3a282a4",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  131,
+                  136
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "hash": "s_d07868f07922f9::t_3bb1e78633962d",
+        "line_ranges": [
+          {
+            "Range": [
+              1,
+              130
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a4cbea34bd16cb3a3a28263",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  1,
+                  130
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_d07868f07922f9": {
+      "tool": "trae",
+      "conversation_id": "6a4cbd3c4bd16cb3a3a281bf",
+      "session_id": "6a4cbd3c4bd16cb3a3a281bf",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_d07868f07922f9::t_382b5b11b07e05": {
+      "tool": "trae",
+      "conversation_id": "6a4cbd3c4bd16cb3a3a281bf",
+      "session_id": "6a4cbd3c4bd16cb3a3a281bf",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_d07868f07922f9::t_3bb1e78633962d": {
+      "tool": "trae",
+      "conversation_id": "6a4cbd3c4bd16cb3a3a281bf",
+      "session_id": "6a4cbd3c4bd16cb3a3a281bf",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_d07868f07922f9::t_8ba48017a7904d": {
+      "tool": "trae",
+      "conversation_id": "6a4cbd3c4bd16cb3a3a281bf",
+      "session_id": "6a4cbd3c4bd16cb3a3a281bf",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_d07868f07922f9::t_9d02a3d6195803": {
+      "tool": "trae",
+      "conversation_id": "6a4cbd3c4bd16cb3a3a281bf",
+      "session_id": "6a4cbd3c4bd16cb3a3a281bf",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
