@@ -93,7 +93,7 @@ npx skills add xiyueyezibile/xiy-skills@reply-generator -g -y
 
 ### team-pitfalls
 
-团队踩坑收集器：对话中出现易错点时，按标准沉淀到skill里
+团队踩坑收集器：任务开始前先检查已有坑，任务结束后再复盘是否值得沉淀
 
 ```bash
 npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
@@ -101,6 +101,7 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 
 功能特性：
 
+- 使用时固定包含“前置检查 + 后置复盘”两段动作
 - 只记录“新同学不看大概率会写错”的可复用问题
 - 先做通用模式判断，再决定是否写入
 - 对同类问题做去重与累计次数
