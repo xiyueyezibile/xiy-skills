@@ -130,6 +130,14 @@ npx skills add https://github.com/helloianneo/ian-xiaohei-illustrations
 - 适合流程、结构、状态、隐喻、观点类内容的正文插图
 - 支持先做 shot list，再按单张结构逐张生成
 
+### taste-skill
+
+高审美前端设计 skill 仓库，适合做落地页、作品集、品牌页和已有项目的界面重设计，也包含图像生成类设计技能
+
+```bash
+npx skills add https://github.com/Leonxlnx/taste-skill
+```
+
 ### skill-creator
 
 帮助 skill 创建
