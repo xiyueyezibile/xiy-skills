@@ -2,7 +2,7 @@
 
 ## 主题
 
-1. 将 `team-pitfalls` 从“通用踩坑库”扩展为“通用规则 + 仓库级业务知识池”。
+1. 将 `team-pitfalls` 从 skill 包内置踩坑库升级为外部 LLM Wiki root 管理。
 2. 设计一个新的 `reply-generator` skill，用于基于上下文和模板生成自然回复。
 3. 为仓库 `README.md` 新增一组 Ian 小黑风格的正文配图。
 
@@ -11,23 +11,26 @@
 ### team-pitfalls
 
 1. 使用 `skill-creator` 修改 `team-pitfalls`。
-2. 仓库级记录不落到业务仓库，继续集中写在当前 `team-pitfalls` skill 仓库内。
-3. 以仓库名作为分目录主键。
-4. 相同仓库名复用同一知识池。
+2. 踩坑记录不再写入当前 `team-pitfalls` skill 包，而是写入用户指定的外部 LLM Wiki root。
+3. 以 `llms.txt` 作为 LLM 入口，以 `index.md` 作为全量索引。
+4. 以 `repos/<repo-name>/` 作为仓库级目录主键，相同仓库名复用同一知识池。
 5. 仓库级默认同时记录两类内容：
    - 业务黑话 / 术语映射
    - AI 找错后被用户修正的纠错记录
-6. 推荐实现方案为“分层索引”：
-   - 通用规则保留在现有 `references/*.md`
-   - 新增 `references/repos/<repo-name>/`
-   - 每个仓库下维护 `INDEX.md`、`glossary.md`、`corrections.md`
+6. 推荐实现方案为标准 LLM Wiki 结构：
+   - `llms.txt`
+   - `index.md`
+   - `pitfalls/*.md`
+   - `repos/<repo-name>/index.md`
+   - `repos/<repo-name>/glossary.md`
+   - `repos/<repo-name>/corrections.md`
 7. 运行优先级确定为：
    - 仓库级校验 > 通用校验
    - 仓库级沉淀和通用沉淀可以同时发生，但不能混写
 8. `team-pitfalls` 的使用流程升级为固定两段：
    - 对话前先检查已有坑
    - 对话结束前再复盘是否有新坑值得沉淀
-9. 这次只修改 skill 行为与文档说明，不实现额外的坑库迁移机制。
+9. 这次抛弃旧 `references/INDEX.md + 分类 md + repos/` 存储结构，并提供迁移脚本把旧记录导入外部 LLM Wiki root。
 
 ### reply-generator
 

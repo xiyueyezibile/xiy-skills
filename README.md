@@ -102,9 +102,14 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 功能特性：
 
 - 使用时固定包含“前置检查 + 后置复盘”两段动作
+- 采用外部 LLM Wiki root 管理踩坑记录，skill 包内不再保存知识库正文
+- 标准结构包含 `llms.txt`、`index.md`、`pitfalls/` 和 `repos/<repo-name>/`
 - 只记录“新同学不看大概率会写错”的可复用问题
 - 先做通用模式判断，再决定是否写入
 - 对同类问题做去重与累计次数
+- 通过 `--wiki-root` 或 `TEAM_PITFALLS_LLM_WIKI_ROOT` 指定外部 LLM Wiki root 后，写入或删除条目时自动刷新
+- 也支持 `~/.config/team-pitfalls/config.json` 持久配置 wiki root，方便每次自动定位
+- 提供迁移脚本，可把旧版 `references/` 记录按新体系重新编号后转入外部 LLM Wiki root
 - 约束不记录密钥、token、cookie 等敏感信息
 
 ### superpowers
