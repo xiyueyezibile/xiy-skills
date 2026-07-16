@@ -220,6 +220,27 @@ def _entry_from_args(args: argparse.Namespace) -> PitfallEntry:
     )
 
 
+def _validate_new_common_entry(entry: PitfallEntry) -> None:
+    missing: list[str] = []
+    required_values = {
+        "tags": entry.tags,
+        "conclusion": entry.conclusion,
+        "reasons": entry.reasons,
+        "wrong": entry.wrong,
+        "right": entry.right,
+        "scope_ok": entry.scope_ok,
+        "scope_no": entry.scope_no,
+    }
+    for field_name, value in required_values.items():
+        if not value:
+            missing.append(field_name)
+    if len(entry.min_examples) < 2:
+        missing.append("min_examples (至少包含原场景抽象和一个跨场景迁移例)")
+    if missing:
+        rendered = ", ".join(missing)
+        raise SystemExit(f"通用坑位信息不足，缺少: {rendered}")
+
+
 def _glossary_from_json(obj: dict[str, object]) -> GlossaryEntry:
     scope_ok, scope_no = _scope_values(obj)
     return GlossaryEntry(
@@ -427,6 +448,8 @@ def _format_pitfall(entry_id: str, entry: PitfallEntry) -> str:
             f"- **首次出现**: {today}",
             f"- **最近出现**: {today}",
             "- **出现次数**: 1",
+            "- **最近使用**: 从未",
+            "- **使用次数**: 0",
             f"- **一句话结论**: {entry.conclusion or 'TODO'}",
             "- **容易写错的原因**:",
             *[f"  - {item}" for item in (entry.reasons or ["TODO"])],
@@ -452,6 +475,8 @@ def _format_glossary(entry_id: str, entry: GlossaryEntry) -> str:
             f"- **首次出现**: {today}",
             f"- **最近出现**: {today}",
             "- **出现次数**: 1",
+            "- **最近使用**: 从未",
+            "- **使用次数**: 0",
             f"- **标准含义**: {entry.standard_meaning or 'TODO'}",
             "- **常见误解**:",
             *[f"  - {item}" for item in (entry.common_misunderstandings or ["TODO"])],
@@ -475,6 +500,8 @@ def _format_correction(entry_id: str, entry: CorrectionEntry) -> str:
             f"- **首次出现**: {today}",
             f"- **最近出现**: {today}",
             "- **出现次数**: 1",
+            "- **最近使用**: 从未",
+            "- **使用次数**: 0",
             f"- **错误理解**: {entry.wrong_understanding or 'TODO'}",
             f"- **用户修正**: {entry.user_correction or 'TODO'}",
             f"- **修正结论**: {entry.correction_conclusion or 'TODO'}",
@@ -536,6 +563,7 @@ def _handle_common(args: argparse.Namespace, payload_obj: Optional[dict[str, obj
         updated_row = IndexRow(existing.entry_id, "pitfall", entry.title, entry.tags or existing.tags, existing.file_path)
         rows_after = _upsert_row(rows, updated_row)
     else:
+        _validate_new_common_entry(entry)
         entry_id = desired_id or _next_id(rows, "P")
         doc_before = _read_text(target_path)
         doc_after = _insert_block(doc_before, _format_pitfall(entry_id, entry))

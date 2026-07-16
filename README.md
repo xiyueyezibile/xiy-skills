@@ -102,10 +102,13 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 功能特性：
 
 - 使用时固定包含“前置检查 + 后置复盘”两段动作
+- 前置检查命中并实际采用记录时自动累计使用次数，区分“问题再次出现”和“知识被复用”
 - 采用外部 LLM Wiki root 管理踩坑记录，skill 包内不再保存知识库正文
 - 标准结构包含 `llms.txt`、`index.md`、`pitfalls/` 和 `repos/<repo-name>/`
 - 只记录“新同学不看大概率会写错”的可复用问题
-- 先做通用模式判断，再决定是否写入
+- 将具体案例按“案例事实 → 失效机制 → 条件式规则”提炼，通用化时保留因果结构而非简单删除专有名词
+- 通用坑位必须通过跨场景迁移测试；无法举出第二场景时保留为仓库级知识
+- 支持同一事件双层沉淀：仓库记录保存证据与边界，通用记录保存机制、触发信号和可执行动作
 - 对同类问题做去重与累计次数
 - 通过 `--wiki-root` 或 `TEAM_PITFALLS_LLM_WIKI_ROOT` 指定外部 LLM Wiki root 后，写入或删除条目时自动刷新
 - 也支持 `~/.config/team-pitfalls/config.json` 持久配置 wiki root，方便每次自动定位
