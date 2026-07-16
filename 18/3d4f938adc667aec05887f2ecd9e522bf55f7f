@@ -1,0 +1,26 @@
+docs/superpowers/plans/2026-07-16-page-observability-report-reliability.md
+  s_74fada806eb62c::t_c8811c88e8260b 1-412
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "183d4f938adc667aec05887f2ecd9e522bf55f7f",
+  "prompts": {},
+  "humans": {
+    "h_a3a5876ea1d354": {
+      "author": "潘麒麟 <panqilin.malis@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_74fada806eb62c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f69ab-9f3b-7331-87e3-ba24f5ac1d68",
+        "model": "unknown"
+      },
+      "human_author": "潘麒麟 <panqilin.malis@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
