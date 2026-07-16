@@ -1,0 +1,26 @@
+docs/superpowers/plans/2026-07-16-global-canv2-agent-guidance.md
+  s_6e33fd65c3cea6::t_53325e01a6b63b 1-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6d6a489f31e2399a346ae2028ccb2ec2be978834",
+  "prompts": {},
+  "humans": {
+    "h_a3a5876ea1d354": {
+      "author": "潘麒麟 <panqilin.malis@bytedance.com>"
+    }
+  },
+  "sessions": {
+    "s_6e33fd65c3cea6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f69ae-8fdf-7bf0-b0b1-f257903081f7",
+        "model": "unknown"
+      },
+      "human_author": "潘麒麟 <panqilin.malis@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
