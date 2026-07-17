@@ -1,0 +1,39 @@
+README.md
+  s_ae3950ab402a45::t_636a7225f11057 105,107-113,130-131
+skills/team-pitfalls/SKILL.md
+  s_ae3950ab402a45::t_730ab44f008fdd 3,8,10,12,14,16,20-21,25-36,38,40,42,45-48,51,54-57,60,62,64,66-69,71,73,75-79
+skills/team-pitfalls/references/knowledge-authoring.md
+  s_ae3950ab402a45::t_c34e2ebe8ac18c 1-84
+skills/team-pitfalls/scripts/begin_task.py
+  s_ae3950ab402a45::t_a1f59b26f195c5 2-5,7-97,101-103,105-109,111,115-128,130-134,140-173,182-186,189-203
+skills/team-pitfalls/scripts/cli_support.py
+  s_ae3950ab402a45::t_632bdbb393c66d 1-72
+skills/team-pitfalls/scripts/delete_pitfall.py
+  s_ae3950ab402a45::t_ca464e8257d724 229-231
+skills/team-pitfalls/scripts/end_task.py
+  s_ae3950ab402a45::t_1caa9e47ad05a5 2,4,8,12-13,19-20,39-42
+skills/team-pitfalls/scripts/normalize_artifact_path.py
+  s_ae3950ab402a45::t_7d14caa321fac8 1-20
+skills/team-pitfalls/scripts/task_lifecycle.py
+  s_ae3950ab402a45::t_e6060f7cba8df5 9,29-32
+skills/team-pitfalls/scripts/upsert_pitfall.py
+  s_ae3950ab402a45::t_044fd5602fee72 11-12,597,671,685
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c5a5a04293e8390de4e0e4c018af0d050808ae5d",
+  "prompts": {},
+  "sessions": {
+    "s_ae3950ab402a45": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6a27-f3f9-75a3-9874-a5e26cca1ae1",
+        "model": "unknown"
+      },
+      "human_author": "潘麒麟 <panqilin.malis@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
