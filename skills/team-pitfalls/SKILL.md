@@ -1,6 +1,6 @@
 ---
 name: team-pitfalls
-description: 团队踩坑与仓库业务知识收集器。当前任务需要前置避坑检查、沉淀经验、整理规范、记录业务黑话或 AI 纠错时必须调用。
+description: 所有非纯闲聊工程任务的团队知识前置检查与后置复盘 Skill。处理代码、仓库、技术方案、文档规范、内部平台、业务术语、经验沉淀或 AI 纠错时，即使用户没有提到“踩坑”或 team-pitfalls，也必须在任务开始时调用；完成任务前必须再次执行复盘，记录新知识或明确说明检查后不记录。
 ---
 
 # Team Pitfalls
@@ -64,6 +64,7 @@ description: 团队踩坑与仓库业务知识收集器。当前任务需要前�
 只要本轮使用了这个 skill，必须执行两段：
 
 1. **对话前检查**
+   - 首先运行 `begin_task.py` 创建本轮生命周期状态；这是本 skill 触发后的第一项动作。
    - 在正式回答、改文件、给方案之前，先读取外部 LLM Wiki 的 `llms.txt` 和 `index.md`。
    - 根据任务关键词，只打开命中的正文页，不一次性加载全部内容。
    - 如果命中具体仓库，优先读取 `repos/<repo-name>/index.md`、`glossary.md`、`corrections.md`。
@@ -72,8 +73,43 @@ description: 团队踩坑与仓库业务知识收集器。当前任务需要前�
    - 在本轮任务准备结束时，回看本轮对话和结果。
    - 判断是否有新的通用坑、仓库黑话、AI 纠错值得沉淀。
    - 有价值就写入外部 LLM Wiki；没有价值也要明确说明“本轮检查过，但不记录”。
+   - 最终答复前运行 `end_task.py`，确认同一个任务已经完成前置检查，并明确本轮沉淀结果。
 
 这个顺序是强制的，不能只做前半段，也不能只在用户追问时才补做后半段。
+
+### 生命周期门禁
+
+任务开始时生成一个本轮稳定、无敏感信息的 `<task-id>`，后续始终复用：
+
+```bash
+python3 skills/team-pitfalls/scripts/begin_task.py \
+  --task-id <task-id> \
+  --repo <repo-name>
+```
+
+`--repo` 可选。脚本只验证 Wiki 配置和基础入口文件，输出需要读取的路径并创建临时状态；它不代替模型实际读取和理解 `llms.txt`、`index.md` 及命中正文。
+
+任务结束时必须二选一：已经沉淀，或检查后明确跳过。不能省略结果：
+
+```bash
+# 已写入或更新知识
+python3 skills/team-pitfalls/scripts/end_task.py \
+  --task-id <task-id> \
+  --confirmed-read llms.txt \
+  --confirmed-read index.md \
+  --result recorded \
+  --entry-id P-001
+
+# 检查后没有值得沉淀的新知识
+python3 skills/team-pitfalls/scripts/end_task.py \
+  --task-id <task-id> \
+  --confirmed-read llms.txt \
+  --confirmed-read index.md \
+  --result skipped \
+  --reason "现有条目已覆盖，本轮没有新的可迁移机制"
+```
+
+`--confirmed-read` 可以传基础文件名或 begin 输出的完整路径。`end_task.py` 在找不到对应 begin 状态、未确认读取 `llms.txt` 和 `index.md`、`recorded` 未提供条目 ID，或 `skipped` 未提供原因时失败。脚本位于 skill 内，只负责 skill 已触发后的流程完整性；是否触发主要由 frontmatter 的 description 决定。
 
 ## 读取规则
 

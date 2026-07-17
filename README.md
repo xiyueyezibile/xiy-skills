@@ -93,7 +93,7 @@ npx skills add xiyueyezibile/xiy-skills@reply-generator -g -y
 
 ### team-pitfalls
 
-团队踩坑收集器：任务开始前先检查已有坑，任务结束后再复盘是否值得沉淀
+团队踩坑收集器：面向非纯闲聊工程任务，在任务开始前检查已有坑，任务结束前复盘是否值得沉淀
 
 ```bash
 npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
@@ -102,6 +102,7 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 功能特性：
 
 - 使用时固定包含“前置检查 + 后置复盘”两段动作
+- 提供 `begin_task.py` / `end_task.py` 生命周期门禁：前者验证 Wiki 配置并创建任务状态，后者校验前置检查并要求明确记录或跳过沉淀
 - 前置检查命中并实际采用记录时自动累计使用次数，区分“问题再次出现”和“知识被复用”
 - 采用外部 LLM Wiki root 管理踩坑记录，skill 包内不再保存知识库正文
 - 标准结构包含 `llms.txt`、`index.md`、`pitfalls/` 和 `repos/<repo-name>/`
@@ -114,6 +115,13 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 - 也支持 `~/.config/team-pitfalls/config.json` 持久配置 wiki root，方便每次自动定位
 - 提供迁移脚本，可把旧版 `references/` 记录按新体系重新编号后转入外部 LLM Wiki root
 - 约束不记录密钥、token、cookie 等敏感信息
+
+生命周期门禁示例：
+
+```bash
+python3 skills/team-pitfalls/scripts/begin_task.py --task-id task-20260717 --repo fe-buyin
+python3 skills/team-pitfalls/scripts/end_task.py --task-id task-20260717 --confirmed-read llms.txt --confirmed-read index.md --result skipped --reason "没有新的可迁移知识"
+```
 
 ### superpowers
 

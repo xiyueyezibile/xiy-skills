@@ -3,3 +3,4 @@ log/
 --help/
 .DS_Store
 .collaborator
+tmp/
