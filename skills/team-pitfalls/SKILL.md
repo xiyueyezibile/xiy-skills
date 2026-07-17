@@ -57,7 +57,7 @@ description: 所有非纯闲聊工程任务的团队知识前置检查与后置�
 
 优先级固定为：命令参数 > 环境变量 > 配置文件。
 
-没有配置外部 LLM Wiki root 时，不能假装已经完成前置检查；应明确说明缺少 wiki root，并让用户提供路径或先跳过沉淀。
+没有配置外部 LLM Wiki root 时，不能假装已经完成前置检查；脚本必须中止并提醒用户主动配置 wiki root，至少给出 `--wiki-root <path>`、`TEAM_PITFALLS_LLM_WIKI_ROOT=<path>` 和 `~/.config/team-pitfalls/config.json` 三种配置方式。
 
 ## 固定执行顺序
 
@@ -87,7 +87,7 @@ python3 skills/team-pitfalls/scripts/begin_task.py \
   --repo <repo-name>
 ```
 
-`--repo` 可选。脚本只验证 Wiki 配置和基础入口文件，输出需要读取的路径并创建临时状态；它不代替模型实际读取和理解 `llms.txt`、`index.md` 及命中正文。
+`--repo` 可选。脚本只验证 Wiki 配置和基础入口文件，输出需要读取的路径并创建临时状态；它不代替模型实际读取和理解 `llms.txt`、`index.md` 及命中正文。若没有配置 Wiki root，脚本会直接提示用户先配置外部目录，不会继续创建任务状态。
 
 任务结束时必须二选一：已经沉淀，或检查后明确跳过。不能省略结果：
 
@@ -334,3 +334,4 @@ python3 skills/team-pitfalls/scripts/migrate_references_to_llm_wiki.py \
 - 读取或写入旧 `references/` 结构。
 - 记录密钥、token、cookie 等敏感信息。
 - 未经用户配置就把知识写到默认路径。
+- 在缺少 Wiki root 配置时静默失败；必须提示用户主动配置后再重试。

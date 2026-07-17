@@ -74,10 +74,28 @@ def _wiki_root_from_config() -> str:
     return str(parsed.get("wiki_root", "")).strip()
 
 
+def _missing_wiki_root_message() -> str:
+    return "\n".join(
+        [
+            "Team Pitfalls LLM Wiki root 未配置，不能迁移旧版 references。",
+            "",
+            "请先主动配置外部 Wiki 目录，然后重新运行本命令。可任选一种方式：",
+            "1. 单次执行：传入 --wiki-root <path>",
+            f"2. 当前 shell：export {WIKI_ROOT_ENV}=<path>",
+            f"3. 持久配置：写入 {DEFAULT_CONFIG_PATH.expanduser()}",
+            "",
+            "配置文件示例：",
+            '{',
+            '  "wiki_root": "/path/to/team-pitfalls-wiki"',
+            '}',
+        ]
+    )
+
+
 def _resolve_wiki_root(raw_path: Optional[str]) -> Path:
     configured_path = (raw_path or os.environ.get(WIKI_ROOT_ENV, "") or _wiki_root_from_config()).strip()
     if not configured_path:
-        raise SystemExit(f"missing --wiki-root, {WIKI_ROOT_ENV}, or {DEFAULT_CONFIG_PATH}")
+        raise SystemExit(_missing_wiki_root_message())
     return Path(configured_path).expanduser().resolve()
 
 

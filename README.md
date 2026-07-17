@@ -113,6 +113,7 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 - 对同类问题做去重与累计次数
 - 通过 `--wiki-root` 或 `TEAM_PITFALLS_LLM_WIKI_ROOT` 指定外部 LLM Wiki root 后，写入或删除条目时自动刷新
 - 也支持 `~/.config/team-pitfalls/config.json` 持久配置 wiki root，方便每次自动定位
+- 未配置 Wiki root 时脚本会中止，并提示用户主动配置 `--wiki-root`、`TEAM_PITFALLS_LLM_WIKI_ROOT` 或 `~/.config/team-pitfalls/config.json`
 - 提供迁移脚本，可把旧版 `references/` 记录按新体系重新编号后转入外部 LLM Wiki root
 - 约束不记录密钥、token、cookie 等敏感信息
 
@@ -121,6 +122,14 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 ```bash
 python3 skills/team-pitfalls/scripts/begin_task.py --task-id task-20260717 --repo fe-buyin
 python3 skills/team-pitfalls/scripts/end_task.py --task-id task-20260717 --confirmed-read llms.txt --confirmed-read index.md --result skipped --reason "没有新的可迁移知识"
+```
+
+持久配置示例：
+
+```json
+{
+  "wiki_root": "/path/to/team-pitfalls-wiki"
+}
 ```
 
 ### superpowers
