@@ -8,6 +8,8 @@ import re
 from pathlib import Path
 from typing import Optional
 
+from cli_support import add_json_source_arguments, load_json_object
+
 
 WIKI_ROOT_ENV = "TEAM_PITFALLS_LLM_WIKI_ROOT"
 CONFIG_ENV = "TEAM_PITFALLS_CONFIG"
@@ -198,15 +200,6 @@ def _find_list(obj: dict[str, object], keys: tuple[str, ...]) -> list[str]:
         if values:
             return values
     return []
-
-
-def _json_payload(json_text: Optional[str]) -> Optional[dict[str, object]]:
-    if not json_text:
-        return None
-    parsed = json.loads(json_text)
-    if not isinstance(parsed, dict):
-        raise SystemExit("--json must be a JSON object")
-    return parsed
 
 
 def _entry_from_json(obj: dict[str, object]) -> PitfallEntry:
@@ -601,7 +594,7 @@ def _handle_common(args: argparse.Namespace, payload_obj: Optional[dict[str, obj
 
 def _handle_repo(args: argparse.Namespace, payload_obj: Optional[dict[str, object]], wiki_root: Path) -> int:
     if payload_obj is None:
-        raise SystemExit("repo mode requires --json")
+        raise SystemExit("repo mode requires --json or --json-file")
     if not args.repo or not args.kind:
         raise SystemExit("repo mode requires --repo and --kind")
 
@@ -675,7 +668,7 @@ def main() -> int:
     parser.add_argument("--repo", help="仓库名，用于写入 repos/<repo-name>/")
     parser.add_argument("--kind", choices=("glossary", "corrections"))
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--json", help="JSON 字符串")
+    add_json_source_arguments(parser)
     parser.add_argument("--title")
     parser.add_argument("--tags", default="")
     parser.add_argument("--conclusion", default="")
@@ -689,7 +682,7 @@ def main() -> int:
 
     wiki_root = _resolve_wiki_root(args.wiki_root)
     _ensure_wiki_scaffold(wiki_root)
-    payload_obj = _json_payload(args.json)
+    payload_obj = load_json_object(args.json, args.json_file)
 
     if args.repo:
         return _handle_repo(args, payload_obj, wiki_root)

@@ -102,8 +102,15 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 功能特性：
 
 - 使用时固定包含“前置检查 + 后置复盘”两段动作
-- 提供 `begin_task.py` / `end_task.py` 生命周期门禁：前者验证 Wiki 配置并创建任务状态，后者校验前置检查并要求明确记录或跳过沉淀
+- 提供 `begin_task.py` / `end_task.py` 两步生命周期门禁：前者在脚本内全量扫描并返回全部相关候选摘要，后者只要求明确记录或跳过沉淀
 - 前置检查命中并实际采用记录时自动累计使用次数，区分“问题再次出现”和“知识被复用”
+- 召回准确性优先：匹配标题、标签、结论和正文，支持中文短语切分，默认不做 Top-N 截断
+- 仓库级候选严格按当前仓库隔离，并通过字段加权过滤正文弱碰撞，兼顾召回与准确性
+- 每条候选返回标题/标签、结论和正文的命中词证据，避免只看黑盒分数判断相关性
+- 查询使用“原词 + 同义词 + 失效机制”关键词；首轮零候选必须扩词复查一次，避免词面差异造成漏召回
+- 不重复输出 `SKILL.md`、`llms.txt` 或全量 `index.md`，全量扫描发生在本地脚本内
+- 复杂 JSON 支持通过 `--json-file` 安全传入，兼容带空格路径与 UTF-8 BOM，并提供明确解析位置
+- 自动化产物统一归一化为 `artifacts/repos/<repo-slug>/<file-slug>` 相对 POSIX 路径
 - 采用外部 LLM Wiki root 管理踩坑记录，skill 包内不再保存知识库正文
 - 标准结构包含 `llms.txt`、`index.md`、`pitfalls/` 和 `repos/<repo-name>/`
 - 只记录“新同学不看大概率会写错”的可复用问题
@@ -120,8 +127,8 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 生命周期门禁示例：
 
 ```bash
-python3 skills/team-pitfalls/scripts/begin_task.py --task-id task-20260717 --repo fe-buyin
-python3 skills/team-pitfalls/scripts/end_task.py --task-id task-20260717 --confirmed-read llms.txt --confirmed-read index.md --result skipped --reason "没有新的可迁移知识"
+python3 skills/team-pitfalls/scripts/begin_task.py --task-id task-20260717 --query "API 影响面与页面流量" --repo fe-buyin
+python3 skills/team-pitfalls/scripts/end_task.py --task-id task-20260717 --result skipped --reason "没有新的可迁移知识"
 ```
 
 持久配置示例：

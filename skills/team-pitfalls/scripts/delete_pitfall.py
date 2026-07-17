@@ -226,13 +226,11 @@ def _refresh_repo_index(wiki_root: Path, repo: str, rows: list[IndexRow]) -> Non
 def main() -> int:
     parser = argparse.ArgumentParser(description="删除 team-pitfalls LLM Wiki 条目")
     parser.add_argument("--wiki-root", help=f"LLM Wiki 根目录，也可用环境变量 {WIKI_ROOT_ENV}")
-    parser.add_argument("--id", help="要删除的条目 ID，例如 P-001 / G-001 / C-001")
-    parser.add_argument("--title", help="要删除的条目标题")
+    target_group = parser.add_mutually_exclusive_group(required=True)
+    target_group.add_argument("--id", help="要删除的条目 ID，例如 P-001 / G-001 / C-001")
+    target_group.add_argument("--title", help="要删除的条目标题")
     parser.add_argument("--dry-run", action="store_true", help="仅预览变更，不写入文件")
     args = parser.parse_args()
-
-    if not args.id and not args.title:
-        raise SystemExit("必须提供 --id 或 --title")
 
     wiki_root = _resolve_wiki_root(args.wiki_root)
     index_path = wiki_root / "index.md"

@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 
-STATE_SCHEMA_VERSION = 1
+STATE_SCHEMA_VERSION = 3
 SAFE_TASK_ID_RE = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 
 
@@ -24,6 +24,10 @@ def state_path(task_id: str) -> Path:
 
 def utc_now() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat()
+
+
+def file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def read_state(path: Path) -> dict[str, object]:
