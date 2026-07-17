@@ -1,0 +1,16 @@
+.gitignore
+  h_a3a5876ea1d354 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "37a86089c34fad46ba1b3b923804d7821bfad4af",
+  "prompts": {},
+  "humans": {
+    "h_a3a5876ea1d354": {
+      "author": "潘麒麟 <panqilin.malis@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
