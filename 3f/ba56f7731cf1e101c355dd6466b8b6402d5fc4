@@ -1,0 +1,202 @@
+skills/team-pitfalls/references/knowledge-authoring.md
+  s_d942b9ab104acf::t_afe57fed5c6714 36-48 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5d9b7aecba5609741b100e","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[36,48]}]}]}
+skills/team-pitfalls/scripts/upsert_pitfall.py
+  s_d942b9ab104acf::t_26ca9a1915f6de 255-293,435-448 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5d9b4becba5609741b0f8d","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[255,293]},{"Range":[435,448]}]}]}
+  s_d942b9ab104acf::t_1d0b5b33b23932 683-686,694-697 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5d9b5aecba5609741b0fbd","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[683,686]},{"Range":[694,697]}]}]}
+  s_d942b9ab104acf::t_a059482b8ddc49 449-450
+skills/team-pitfalls/SKILL.md
+  s_d942b9ab104acf::t_96d117002f3b7c 42-43 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a5d9b69ecba5609741b0fea","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[42,43]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3fba56f7731cf1e101c355dd6466b8b6402d5fc4",
+  "prompts": {},
+  "sessions": {
+    "s_d942b9ab104acf": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a5d8e10ecba5609741b0953",
+        "model": "gpt-5.5__dev"
+      },
+      "human_author": "潘麒麟 <panqilin.malis@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {
+    "skills/team-pitfalls/SKILL.md": [
+      {
+        "hash": "s_d942b9ab104acf::t_96d117002f3b7c",
+        "line_ranges": [
+          {
+            "Range": [
+              42,
+              43
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5d9b69ecba5609741b0fea",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  42,
+                  43
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "skills/team-pitfalls/references/knowledge-authoring.md": [
+      {
+        "hash": "s_d942b9ab104acf::t_afe57fed5c6714",
+        "line_ranges": [
+          {
+            "Range": [
+              36,
+              48
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5d9b7aecba5609741b100e",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  36,
+                  48
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "skills/team-pitfalls/scripts/upsert_pitfall.py": [
+      {
+        "hash": "s_d942b9ab104acf::t_26ca9a1915f6de",
+        "line_ranges": [
+          {
+            "Range": [
+              255,
+              293
+            ]
+          },
+          {
+            "Range": [
+              435,
+              448
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5d9b4becba5609741b0f8d",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  255,
+                  293
+                ]
+              },
+              {
+                "Range": [
+                  435,
+                  448
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "hash": "s_d942b9ab104acf::t_1d0b5b33b23932",
+        "line_ranges": [
+          {
+            "Range": [
+              683,
+              686
+            ]
+          },
+          {
+            "Range": [
+              694,
+              697
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a5d9b5aecba5609741b0fbd",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  683,
+                  686
+                ]
+              },
+              {
+                "Range": [
+                  694,
+                  697
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_d942b9ab104acf": {
+      "tool": "trae",
+      "conversation_id": "6a5d8e10ecba5609741b0953",
+      "session_id": "6a5d8e10ecba5609741b0953",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_d942b9ab104acf::t_1d0b5b33b23932": {
+      "tool": "trae",
+      "conversation_id": "6a5d8e10ecba5609741b0953",
+      "session_id": "6a5d8e10ecba5609741b0953",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_d942b9ab104acf::t_26ca9a1915f6de": {
+      "tool": "trae",
+      "conversation_id": "6a5d8e10ecba5609741b0953",
+      "session_id": "6a5d8e10ecba5609741b0953",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_d942b9ab104acf::t_96d117002f3b7c": {
+      "tool": "trae",
+      "conversation_id": "6a5d8e10ecba5609741b0953",
+      "session_id": "6a5d8e10ecba5609741b0953",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_d942b9ab104acf::t_afe57fed5c6714": {
+      "tool": "trae",
+      "conversation_id": "6a5d8e10ecba5609741b0953",
+      "session_id": "6a5d8e10ecba5609741b0953",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
