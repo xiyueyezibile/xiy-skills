@@ -39,6 +39,8 @@ python3 skills/team-pitfalls/scripts/begin_task.py \
 
 任务完成后只判断本轮是否产生新的可迁移机制、仓库术语或用户纠错。
 
+仓库级知识按 `--repo` 隔离判断是否已有：其他仓库已有相同或相近记录，只能作为参考，不能当作当前仓库“现有记录已覆盖”的理由。若本轮问题会在当前仓库复发，且当前仓库没有等价 `G-*`/`C-*`，必须写入当前仓库的 `repos/<repo-name>/glossary.md` 或 `repos/<repo-name>/corrections.md`。
+
 没有新知识：
 
 ```bash

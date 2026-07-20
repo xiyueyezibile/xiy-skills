@@ -252,6 +252,45 @@ def _validate_new_common_entry(entry: PitfallEntry) -> None:
         raise SystemExit(f"通用坑位信息不足，缺少: {rendered}")
 
 
+def _validate_new_glossary_entry(entry: GlossaryEntry) -> None:
+    missing: list[str] = []
+    required_values = {
+        "tags": entry.tags,
+        "standard_meaning": entry.standard_meaning,
+        "common_misunderstandings": entry.common_misunderstandings,
+        "correct_understanding": entry.correct_understanding,
+        "min_examples": entry.min_examples,
+        "scope_ok": entry.scope_ok,
+        "scope_no": entry.scope_no,
+    }
+    for field_name, value in required_values.items():
+        if not value:
+            missing.append(field_name)
+    if missing:
+        rendered = ", ".join(missing)
+        raise SystemExit(f"仓库术语信息不足，缺少: {rendered}")
+
+
+def _validate_new_correction_entry(entry: CorrectionEntry) -> None:
+    missing: list[str] = []
+    required_values = {
+        "tags": entry.tags,
+        "wrong_understanding": entry.wrong_understanding,
+        "user_correction": entry.user_correction,
+        "correction_conclusion": entry.correction_conclusion,
+        "trigger_clues": entry.trigger_clues,
+        "min_examples": entry.min_examples,
+        "scope_ok": entry.scope_ok,
+        "scope_no": entry.scope_no,
+    }
+    for field_name, value in required_values.items():
+        if not value:
+            missing.append(field_name)
+    if missing:
+        rendered = ", ".join(missing)
+        raise SystemExit(f"仓库纠错信息不足，缺少: {rendered}")
+
+
 def _glossary_from_json(obj: dict[str, object]) -> GlossaryEntry:
     scope_ok, scope_no = _scope_values(obj)
     return GlossaryEntry(
@@ -389,6 +428,22 @@ def _find_by_id(rows: list[IndexRow], entry_id: str) -> Optional[IndexRow]:
     expected = entry_id.strip()
     for row in rows:
         if row.entry_id == expected:
+            return row
+    return None
+
+
+def _find_by_title_in_file(rows: list[IndexRow], title: str, kind: str, file_path: str) -> Optional[IndexRow]:
+    expected = title.strip()
+    for row in rows:
+        if row.title == expected and row.kind == kind and row.file_path == file_path:
+            return row
+    return None
+
+
+def _find_by_id_in_file(rows: list[IndexRow], entry_id: str, file_path: str) -> Optional[IndexRow]:
+    expected = entry_id.strip()
+    for row in rows:
+        if row.entry_id == expected and row.file_path == file_path:
             return row
     return None
 
@@ -620,14 +675,14 @@ def _handle_repo(args: argparse.Namespace, payload_obj: Optional[dict[str, objec
     index_before = _read_index(wiki_root)
     rows = _parse_index_rows(index_before)
     desired_id = _desired_id(payload_obj, prefix)
-    existing = _find_by_title(rows, entry.title, kind)
-    if existing is None and desired_id:
-        existing = _find_by_id(rows, desired_id)
-
     repo_index_path = wiki_root / "repos" / repo / "index.md"
     _ensure_page(repo_index_path, f"{repo} Index", f"{repo} 的仓库级踩坑、术语和纠错记录。")
     target_path = wiki_root / file_path
     _ensure_page(target_path, page_title, f"{repo} 的 {kind} 记录。")
+
+    existing = _find_by_title_in_file(rows, entry.title, kind, file_path)
+    if existing is None and desired_id:
+        existing = _find_by_id_in_file(rows, desired_id, file_path)
 
     if existing is not None:
         target_path = wiki_root / existing.file_path
@@ -636,6 +691,10 @@ def _handle_repo(args: argparse.Namespace, payload_obj: Optional[dict[str, objec
         updated_row = IndexRow(existing.entry_id, kind, entry.title, entry.tags or existing.tags, existing.file_path)
         rows_after = _upsert_row(rows, updated_row)
     else:
+        if args.kind == "glossary":
+            _validate_new_glossary_entry(entry)
+        else:
+            _validate_new_correction_entry(entry)
         entry_id = desired_id or _next_id(rows, prefix)
         doc_before = _read_text(target_path)
         doc_after = _insert_block(doc_before, formatter(entry_id, entry))
