@@ -65,12 +65,11 @@ def _increment_usage(doc_text: str, entry_id: str, today: str) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="记录 team-pitfalls 条目在前置检查中的实际使用")
-    parser.add_argument("--wiki-root", help="LLM Wiki 根目录；未传时读取环境变量、配置文件或默认 ~/.team-pitfalls-wiki")
     parser.add_argument("--id", action="append", required=True, dest="entry_ids", help="命中的条目 ID，可重复传入")
     parser.add_argument("--dry-run", action="store_true", help="仅预览变更，不写入文件")
     args = parser.parse_args()
 
-    wiki_root = _resolve_wiki_root(args.wiki_root)
+    wiki_root = _resolve_wiki_root()
     rows = _parse_index_rows(_read_index(wiki_root))
     rows_by_id = {row.entry_id: row for row in rows}
     entry_ids = list(dict.fromkeys(args.entry_ids))

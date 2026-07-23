@@ -2,8 +2,6 @@ import argparse
 import dataclasses
 import datetime as _dt
 import difflib
-import json
-import os
 import re
 from pathlib import Path
 from typing import Optional
@@ -11,9 +9,6 @@ from typing import Optional
 from cli_support import add_json_source_arguments, load_json_object
 
 
-WIKI_ROOT_ENV = "TEAM_PITFALLS_LLM_WIKI_ROOT"
-CONFIG_ENV = "TEAM_PITFALLS_CONFIG"
-DEFAULT_CONFIG_PATH = Path("~/.config/team-pitfalls/config.json")
 DEFAULT_WIKI_ROOT = Path("~/.team-pitfalls-wiki")
 
 TYPE_TO_FILE: dict[str, str] = {
@@ -101,6 +96,30 @@ def _rel(root: Path, path: Path) -> str:
         return path.name
 
 
+def _find_string_in_obj(obj: Optional[dict[str, object]], keys: tuple[str, ...]) -> str:
+    if obj is None:
+        return ""
+    for key in keys:
+        value = obj.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _existing_intro(path: Path, default_intro: str) -> str:
+    if not path.exists():
+        return default_intro
+    lines = _read_text(path).splitlines()
+    for line in lines[1:]:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped in {"暂无条目。", default_intro}:
+            return default_intro
+        return stripped
+    return default_intro
+
+
 def _unified_diff(before: str, after: str, from_name: str, to_name: str) -> str:
     return "".join(
         difflib.unified_diff(
@@ -112,21 +131,7 @@ def _unified_diff(before: str, after: str, from_name: str, to_name: str) -> str:
     )
 
 
-def _wiki_root_from_config() -> str:
-    raw_config_path = os.environ.get(CONFIG_ENV, "").strip()
-    config_path = Path(raw_config_path).expanduser() if raw_config_path else DEFAULT_CONFIG_PATH.expanduser()
-    if not config_path.exists():
-        return ""
-    parsed = json.loads(_read_text(config_path))
-    if not isinstance(parsed, dict):
-        raise SystemExit(f"config must be a JSON object: {config_path}")
-    return str(parsed.get("wiki_root", "")).strip()
-
-
-def _resolve_wiki_root(raw_path: Optional[str]) -> Path:
-    configured_path = (raw_path or os.environ.get(WIKI_ROOT_ENV, "") or _wiki_root_from_config()).strip()
-    if configured_path:
-        return Path(configured_path).expanduser().resolve()
+def _resolve_wiki_root() -> Path:
     return DEFAULT_WIKI_ROOT.expanduser().resolve()
 
 
@@ -424,7 +429,7 @@ def _write_domains_index(wiki_root: Path, rows: list[IndexRow]) -> None:
     _write_text(wiki_root / "domains" / "index.md", "\n".join(lines))
 
 
-def _write_global_domain_index(wiki_root: Path, domain: str, rows: list[IndexRow]) -> None:
+def _write_global_domain_index(wiki_root: Path, domain: str, rows: list[IndexRow], description: str = "") -> None:
     domain_prefix = f"domains/{domain}/"
     domain_rows = [row for row in rows if row.file_path.startswith(domain_prefix)]
     related_repos = sorted(
@@ -434,7 +439,10 @@ def _write_global_domain_index(wiki_root: Path, domain: str, rows: list[IndexRow
             if row.file_path.startswith("repos/") and f"/domains/{domain}/" in row.file_path
         }
     )
-    lines = [f"# {domain} Global Domain", "", f"{domain} 跨仓库业务领域知识。", ""]
+    index_path = wiki_root / "domains" / domain / "index.md"
+    default_intro = f"{domain} 跨仓库业务领域知识。"
+    intro = description or _existing_intro(index_path, default_intro)
+    lines = [f"# {domain} Global Domain", "", intro, ""]
     if related_repos:
         lines.extend(["## Related Repositories", ""])
         lines.extend(f"- [{repo}](../../repos/{repo}/domains/{domain}/index.md)" for repo in related_repos)
@@ -443,7 +451,7 @@ def _write_global_domain_index(wiki_root: Path, domain: str, rows: list[IndexRow
     for row in sorted(domain_rows, key=lambda item: item.entry_id):
         lines.append(f"- `{row.entry_id}` `{row.kind}` [{row.title}]({Path(row.file_path).name})")
     lines.append("")
-    _write_text(wiki_root / "domains" / domain / "index.md", "\n".join(lines))
+    _write_text(index_path, "\n".join(lines))
 
 
 def _domain_names_for_repo(rows: list[IndexRow], repo: str) -> list[str]:
@@ -477,14 +485,17 @@ def _write_repo_index(wiki_root: Path, repo: str, rows: list[IndexRow]) -> None:
     _write_text(wiki_root / "repos" / repo / "index.md", "\n".join(repo_lines))
 
 
-def _write_domain_index(wiki_root: Path, repo: str, domain: str, rows: list[IndexRow]) -> None:
+def _write_domain_index(wiki_root: Path, repo: str, domain: str, rows: list[IndexRow], description: str = "") -> None:
     domain_prefix = f"repos/{repo}/domains/{domain}/"
     domain_rows = [row for row in rows if row.file_path.startswith(domain_prefix)]
-    domain_lines = [f"# {repo} / {domain} Index", "", f"{repo} 仓库 {domain} 领域的踩坑、术语和纠错记录。", ""]
+    index_path = wiki_root / "repos" / repo / "domains" / domain / "index.md"
+    default_intro = f"{repo} 仓库 {domain} 领域的踩坑、术语和纠错记录。"
+    intro = description or _existing_intro(index_path, default_intro)
+    domain_lines = [f"# {repo} / {domain} Index", "", intro, ""]
     for row in sorted(domain_rows, key=lambda item: item.entry_id):
         domain_lines.append(f"- `{row.entry_id}` `{row.kind}` [{row.title}](../../../../{row.file_path})")
     domain_lines.append("")
-    _write_text(wiki_root / "repos" / repo / "domains" / domain / "index.md", "\n".join(domain_lines))
+    _write_text(index_path, "\n".join(domain_lines))
 
 
 def _ensure_page(path: Path, title: str, description: str) -> None:
@@ -750,8 +761,9 @@ def _handle_global_domain(args: argparse.Namespace, payload_obj: Optional[dict[s
 
     rows = _parse_index_rows(_read_index(wiki_root))
     desired_id = _desired_id(payload_obj, prefix)
+    domain_description = _find_string_in_obj(payload_obj, ("domain_description", "domain_summary", "domain_intro"))
     domain_index_path = wiki_root / "domains" / domain / "index.md"
-    _ensure_page(domain_index_path, f"{domain} Global Domain", f"{domain} 跨仓库业务领域知识。")
+    _ensure_page(domain_index_path, f"{domain} Global Domain", domain_description or f"{domain} 跨仓库业务领域知识。")
     target_path = wiki_root / file_path
     _ensure_page(target_path, page_title, f"{domain} 的全局领域 {kind} 记录。")
 
@@ -782,7 +794,7 @@ def _handle_global_domain(args: argparse.Namespace, payload_obj: Optional[dict[s
         return 0
 
     _write_text(target_path, doc_after)
-    _write_global_domain_index(wiki_root, domain, rows_after)
+    _write_global_domain_index(wiki_root, domain, rows_after, domain_description)
     _write_domains_index(wiki_root, rows_after)
     _write_index(wiki_root, rows_after)
     _write_llms_txt(wiki_root, rows_after)
@@ -818,11 +830,12 @@ def _handle_repo(args: argparse.Namespace, payload_obj: Optional[dict[str, objec
     index_before = _read_index(wiki_root)
     rows = _parse_index_rows(index_before)
     desired_id = _desired_id(payload_obj, prefix)
+    domain_description = _find_string_in_obj(payload_obj, ("domain_description", "domain_summary", "domain_intro"))
     repo_index_path = wiki_root / "repos" / repo / "index.md"
     _ensure_page(repo_index_path, f"{repo} Index", f"{repo} 的仓库级踩坑、术语和纠错记录。")
     if domain:
         domain_index_path = wiki_root / "repos" / repo / "domains" / domain / "index.md"
-        _ensure_page(domain_index_path, f"{repo} / {domain} Index", f"{repo} 仓库 {domain} 领域的踩坑、术语和纠错记录。")
+        _ensure_page(domain_index_path, f"{repo} / {domain} Index", domain_description or f"{repo} 仓库 {domain} 领域的踩坑、术语和纠错记录。")
     target_path = wiki_root / file_path
     _ensure_page(target_path, page_title, f"{repo} 的 {kind} 记录。")
 
@@ -855,7 +868,7 @@ def _handle_repo(args: argparse.Namespace, payload_obj: Optional[dict[str, objec
     _write_text(target_path, doc_after)
     _write_repo_index(wiki_root, repo, rows_after)
     if domain:
-        _write_domain_index(wiki_root, repo, domain, rows_after)
+        _write_domain_index(wiki_root, repo, domain, rows_after, domain_description)
         _write_global_domain_index(wiki_root, domain, rows_after)
         _write_domains_index(wiki_root, rows_after)
     _write_index(wiki_root, rows_after)
@@ -865,7 +878,6 @@ def _handle_repo(args: argparse.Namespace, payload_obj: Optional[dict[str, objec
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="写入或更新 team-pitfalls LLM Wiki 条目")
-    parser.add_argument("--wiki-root", help=f"LLM Wiki 根目录，也可用环境变量 {WIKI_ROOT_ENV}；默认 ~/.team-pitfalls-wiki")
     parser.add_argument("--type", choices=sorted(TYPE_TO_FILE.keys()))
     parser.add_argument("--file", help="wiki root 下的相对文件路径，例如 pitfalls/custom.md")
     parser.add_argument("--repo", help="仓库名，用于写入 repos/<repo-name>/")
@@ -885,7 +897,7 @@ def main() -> int:
     parser.add_argument("--scope-no", default="")
     args = parser.parse_args()
 
-    wiki_root = _resolve_wiki_root(args.wiki_root)
+    wiki_root = _resolve_wiki_root()
     _ensure_wiki_scaffold(wiki_root)
     payload_obj = load_json_object(args.json, args.json_file)
 

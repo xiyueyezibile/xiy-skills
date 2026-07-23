@@ -1,16 +1,11 @@
 import argparse
 import dataclasses
 import difflib
-import json
-import os
 import re
 from pathlib import Path
 from typing import Optional
 
 
-WIKI_ROOT_ENV = "TEAM_PITFALLS_LLM_WIKI_ROOT"
-CONFIG_ENV = "TEAM_PITFALLS_CONFIG"
-DEFAULT_CONFIG_PATH = Path("~/.config/team-pitfalls/config.json")
 DEFAULT_WIKI_ROOT = Path("~/.team-pitfalls-wiki")
 
 INDEX_ROW_RE = re.compile(
@@ -55,21 +50,21 @@ def _unified_diff(before: str, after: str, from_name: str, to_name: str) -> str:
     )
 
 
-def _wiki_root_from_config() -> str:
-    raw_config_path = os.environ.get(CONFIG_ENV, "").strip()
-    config_path = Path(raw_config_path).expanduser() if raw_config_path else DEFAULT_CONFIG_PATH.expanduser()
-    if not config_path.exists():
-        return ""
-    parsed = json.loads(_read_text(config_path))
-    if not isinstance(parsed, dict):
-        raise SystemExit(f"config must be a JSON object: {config_path}")
-    return str(parsed.get("wiki_root", "")).strip()
+def _existing_intro(path: Path, default_intro: str) -> str:
+    if not path.exists():
+        return default_intro
+    lines = _read_text(path).splitlines()
+    for line in lines[1:]:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped in {"暂无条目。", default_intro}:
+            return default_intro
+        return stripped
+    return default_intro
 
 
-def _resolve_wiki_root(raw_path: Optional[str]) -> Path:
-    configured_path = (raw_path or os.environ.get(WIKI_ROOT_ENV, "") or _wiki_root_from_config()).strip()
-    if configured_path:
-        return Path(configured_path).expanduser().resolve()
+def _resolve_wiki_root() -> Path:
     return DEFAULT_WIKI_ROOT.expanduser().resolve()
 
 
@@ -265,11 +260,13 @@ def _refresh_global_domain_index(wiki_root: Path, domain: str, rows: list[IndexR
         }
     )
     domain_index_path = wiki_root / "domains" / domain / "index.md"
+    default_intro = f"{domain} 跨仓库业务领域知识。"
+    intro = _existing_intro(domain_index_path, default_intro)
     if not domain_rows and not related_repos:
         if domain_index_path.exists():
-            _write_text(domain_index_path, f"# {domain} Global Domain\n\n暂无条目。\n")
+            _write_text(domain_index_path, f"# {domain} Global Domain\n\n{intro}\n\n暂无条目。\n")
         return
-    lines = [f"# {domain} Global Domain", "", f"{domain} 跨仓库业务领域知识。", ""]
+    lines = [f"# {domain} Global Domain", "", intro, ""]
     if related_repos:
         lines.extend(["## Related Repositories", ""])
         lines.extend(f"- [{repo}](../../repos/{repo}/domains/{domain}/index.md)" for repo in related_repos)
@@ -285,11 +282,13 @@ def _refresh_domain_index(wiki_root: Path, repo: str, domain: str, rows: list[In
     domain_prefix = f"repos/{repo}/domains/{domain}/"
     domain_rows = [row for row in rows if row.file_path.startswith(domain_prefix)]
     domain_index_path = wiki_root / "repos" / repo / "domains" / domain / "index.md"
+    default_intro = f"{repo} 仓库 {domain} 领域的踩坑、术语和纠错记录。"
+    intro = _existing_intro(domain_index_path, default_intro)
     if not domain_rows:
         if domain_index_path.exists():
-            _write_text(domain_index_path, f"# {repo} / {domain} Index\n\n暂无条目。\n")
+            _write_text(domain_index_path, f"# {repo} / {domain} Index\n\n{intro}\n\n暂无条目。\n")
         return
-    lines = [f"# {repo} / {domain} Index", "", f"{repo} 仓库 {domain} 领域的踩坑、术语和纠错记录。", ""]
+    lines = [f"# {repo} / {domain} Index", "", intro, ""]
     for row in sorted(domain_rows, key=lambda item: item.entry_id):
         lines.append(f"- `{row.entry_id}` `{row.kind}` [{row.title}](../../../../{row.file_path})")
     lines.append("")
@@ -322,14 +321,13 @@ def _refresh_repo_index(wiki_root: Path, repo: str, rows: list[IndexRow]) -> Non
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="删除 team-pitfalls LLM Wiki 条目")
-    parser.add_argument("--wiki-root", help=f"LLM Wiki 根目录，也可用环境变量 {WIKI_ROOT_ENV}；默认 ~/.team-pitfalls-wiki")
     target_group = parser.add_mutually_exclusive_group(required=True)
     target_group.add_argument("--id", help="要删除的条目 ID，例如 P-001 / G-001 / C-001")
     target_group.add_argument("--title", help="要删除的条目标题")
     parser.add_argument("--dry-run", action="store_true", help="仅预览变更，不写入文件")
     args = parser.parse_args()
 
-    wiki_root = _resolve_wiki_root(args.wiki_root)
+    wiki_root = _resolve_wiki_root()
     index_path = wiki_root / "index.md"
     if not index_path.exists():
         raise SystemExit("index.md does not exist in wiki root")

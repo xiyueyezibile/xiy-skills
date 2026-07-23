@@ -46,7 +46,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="创建 team-pitfalls 分层前置检查状态并返回仓库领域/全局领域/仓库/全局摘要")
     parser.add_argument("--task-id", required=True, help="本轮稳定任务 ID，不要包含敏感信息")
     parser.add_argument("--query", help="兼容旧调用保留；分层查找不再使用 query 做召回")
-    parser.add_argument("--wiki-root", help="LLM Wiki 根目录；未传时读取环境变量、配置文件或默认 ~/.team-pitfalls-wiki")
     parser.add_argument("--repo", help="当前仓库名，用于读取仓库级记录")
     parser.add_argument("--domain", help="当前领域名；可单独用于读取全局领域级记录，配合 --repo 时优先读取仓库领域级记录")
     parser.add_argument("--skill-root", help="team-pitfalls skill 根目录；默认从当前脚本反查")
@@ -70,7 +69,7 @@ def main() -> int:
     if missing_skill_files:
         raise SystemExit(f"Skill 文件不完整: {', '.join(str(path) for path in missing_skill_files)}")
 
-    wiki_root = _resolve_wiki_root(args.wiki_root)
+    wiki_root = _resolve_wiki_root()
     _ensure_wiki_scaffold(wiki_root)
     llms_path = wiki_root / "llms.txt"
     index_path = wiki_root / "index.md"

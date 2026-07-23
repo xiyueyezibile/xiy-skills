@@ -106,6 +106,7 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 - 前置检查实际采用记录时自动累计使用次数，区分“问题再次出现”和“知识被复用”
 - 分层上下文优先：仓库领域级 `repos/<repo>/domains/<domain>/` → 全局领域级 `domains/<domain>/` → 仓库级 `repos/<repo>/` → 全局级 `pitfalls/`
 - 同一仓库可拆多个领域；业务跨仓库时还可维护全局领域级，用来反向发现其他仓库的同领域记录
+- 每个领域 `index.md` 都保留简短介绍，说明业务、页面/链路范围、典型术语或指标边界
 - 适合放进领域级的知识：某类业务、某个页面、页面簇、业务链路、端内入口、领域术语、领域指标或类似稳定范围
 - 不再使用 query 召回、字段打分、命中词证据或 Top-N 截断作为主流程
 - 每条记录返回 `ID + Kind + Title + Tags + File + 结论` 摘要，按层级顺序审阅和采用
@@ -119,9 +120,7 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 - 通用坑位必须通过跨场景迁移测试；无法举出第二场景时优先保留为领域级或仓库级知识
 - 支持同一事件多层沉淀：仓库领域记录保存当前仓库业务边界，全局领域记录保存跨仓库业务共性，仓库记录保存仓库共性，全局记录保存跨项目机制
 - 对同类问题做去重与累计次数
-- 默认使用 `~/.team-pitfalls-wiki` 作为外部 LLM Wiki root，并在首次运行时自动初始化基础结构
-- 仍可通过 `--wiki-root`、`TEAM_PITFALLS_LLM_WIKI_ROOT` 或 `~/.config/team-pitfalls/config.json` 覆盖默认路径，方便团队共享同一份知识库
-- 提供迁移脚本，可把旧版 `references/` 记录按新体系重新编号后转入外部 LLM Wiki root
+- 固定使用 `~/.team-pitfalls-wiki` 作为外部 LLM Wiki root，并在首次运行时自动初始化基础结构
 - 约束不记录密钥、token、cookie 等敏感信息
 
 生命周期门禁示例：
@@ -131,18 +130,10 @@ python3 skills/team-pitfalls/scripts/begin_task.py --task-id task-20260717 --rep
 python3 skills/team-pitfalls/scripts/end_task.py --task-id task-20260717 --result skipped --reason "没有新的可迁移知识"
 ```
 
-默认目录：
+固定目录：
 
 ```text
 ~/.team-pitfalls-wiki
-```
-
-覆盖默认目录的持久配置示例：
-
-```json
-{
-  "wiki_root": "/path/to/team-pitfalls-wiki"
-}
 ```
 
 ### superpowers

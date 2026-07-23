@@ -63,7 +63,7 @@ python3 skills/team-pitfalls/scripts/end_task.py \
 
 仅在以下情况读取 [knowledge-authoring.md](references/knowledge-authoring.md)：
 
-- 新增、更新、删除或迁移知识条目。
+- 新增、更新或删除知识条目。
 - 用户要求优化 `team-pitfalls` 本身。
 - 需要判断具体案例能否升级为通用坑位。
 - 需要处理复杂 JSON、产物路径或 Wiki 结构。
@@ -72,9 +72,10 @@ python3 skills/team-pitfalls/scripts/end_task.py \
 
 ## 不可省略的边界
 
-- Wiki root 优先级：命令参数 > `TEAM_PITFALLS_LLM_WIKI_ROOT` > `~/.config/team-pitfalls/config.json` > `~/.team-pitfalls-wiki`。
-- 用户未配置时自动使用 `~/.team-pitfalls-wiki` 并初始化基础 Wiki 结构；只有需要团队共享或迁移既有知识库时才引导用户覆盖路径。
+- Wiki root 固定使用 `~/.team-pitfalls-wiki`，不支持命令参数、环境变量或配置文件覆盖。
+- 首次运行时自动初始化 `~/.team-pitfalls-wiki` 的基础 Wiki 结构。
 - 仓库领域级知识优先于全局领域级知识，全局领域级知识优先于仓库级知识，仓库级知识优先于全局知识；四者不能混写成一条。
+- 每个领域 `index.md` 必须保留简短介绍，说明业务、页面/链路范围、典型术语或指标边界；刷新索引不能覆盖人工补充的简介。
 - 知识条目不记录 `首次出现` 和 `最近出现`；只保留出现次数和使用次数。
 - 不记录账号、token、cookie、用户正文或其他敏感信息。
 - `llms.txt` 只做精选入口和读取顺序，不当 sitemap；基础结构包含 `SCHEMA.md`、`index.md`、`llms.txt`、`domains/`、`repos/` 和 `pitfalls/`。

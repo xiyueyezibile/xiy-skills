@@ -1,11 +1,11 @@
 # Team Pitfalls 知识沉淀规范
 
-仅在写入、迁移、删除知识或维护本 Skill 时读取。
+仅在写入、删除知识或维护本 Skill 时读取。
 
 ## Wiki 结构
 
 ```text
-<wiki-root>/
+~/.team-pitfalls-wiki/
   SCHEMA.md
   llms.txt
   index.md
@@ -27,6 +27,8 @@
 - `C-*`：仓库或领域 AI 纠错。
 - `domains/<domain-name>/`：跨仓库的全局领域级知识，用于描述某类业务在多个仓库中的共同规则，并反向关联相关仓库。
 - `repos/<repo-name>/domains/<domain-name>/`：当前仓库内的领域级知识，用于描述该仓库里某类业务、某个页面、某条链路或相近范围的规则。
+
+每个领域的 `index.md` 必须有一段简短介绍，说明该领域覆盖的业务、页面/链路范围、典型术语或指标边界。写入领域级条目时，优先通过 payload 的 `domain_description` 补充；未提供时使用默认简介，后续人工补充的简介不得被刷新逻辑覆盖。
 
 `llms.txt` 遵循 LLM 入口文件的轻量约定：一个 H1、简短摘要、少量上下文说明和 H2 分组链接；它是 curated map，不是 sitemap。`SCHEMA.md` 作为结构与维护规则入口，`index.md` 是全量条目索引，具体页面保持自包含、可整页读取，不依赖 chunk 拼接。
 
@@ -87,7 +89,7 @@ python3 skills/team-pitfalls/scripts/upsert_pitfall.py \
 ```
 
 `--json` 与 `--json-file` 互斥；`--json-file -` 从标准输入读取。文件路径含空格时必须作为单个参数传入。
-Wiki root 默认使用 `~/.team-pitfalls-wiki`；需要团队共享或迁移既有知识库时，再用 `--wiki-root <path>`、`TEAM_PITFALLS_LLM_WIKI_ROOT` 或 `~/.config/team-pitfalls/config.json` 覆盖。
+Wiki root 固定使用 `~/.team-pitfalls-wiki`；不支持 `--wiki-root`、环境变量或配置文件覆盖。
 
 仓库术语或纠错增加：
 
@@ -109,13 +111,11 @@ python3 skills/team-pitfalls/scripts/upsert_pitfall.py \
   --json-file <payload.json>
 ```
 
-`--kind corrections` 写入纠错。删除使用：
+`--kind corrections` 写入纠错。领域级 payload 可额外带 `domain_description` 字段，用于维护该领域 `index.md` 的简短介绍。删除使用：
 
 ```bash
 python3 skills/team-pitfalls/scripts/delete_pitfall.py --id P-001
 ```
-
-迁移旧 references 使用 `migrate_references_to_llm_wiki.py`。
 
 ## 计数口径
 
