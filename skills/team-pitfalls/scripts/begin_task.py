@@ -6,60 +6,11 @@ from pathlib import Path
 
 from cli_support import artifact_reference, safe_slug
 from task_lifecycle import STATE_SCHEMA_VERSION, file_sha256, state_path, utc_now, validate_task_id, write_state
-from upsert_pitfall import IndexRow, _parse_index_rows, _read_text, _resolve_wiki_root
+from upsert_pitfall import IndexRow, _ensure_wiki_scaffold, _parse_index_rows, _read_text, _resolve_wiki_root
 
 
-TERM_SPLIT_RE = re.compile(r"[,，、\s/|:：;；()（）\[\]{}]+")
 ENTRY_HEADER_RE = re.compile(r"^###\s+((?:P|G|C)-\d{3})\s*:")
 CONCLUSION_PREFIXES = ("- **一句话结论**:", "- **修正结论**:", "- **标准含义**:")
-HAN_RE = re.compile(r"^[\u3400-\u9fff]+$")
-ATOM_RE = re.compile(r"[a-z0-9._-]+|[\u3400-\u9fff]+")
-STOP_TERMS = {
-    "team-pitfalls",
-    "skill",
-    "top3",
-    "任务",
-    "问题",
-    "相关",
-    "候选",
-    "摘要",
-    "踩坑",
-    "记录",
-}
-
-
-def _terms(value: str) -> list[str]:
-    output: set[str] = set()
-    for raw_item in TERM_SPLIT_RE.split(value.lower()):
-        for item in ATOM_RE.findall(raw_item):
-            if len(item) < 2:
-                continue
-            output.add(item)
-            if HAN_RE.fullmatch(item):
-                for size in (2, 3, 4):
-                    output.update(item[index : index + size] for index in range(len(item) - size + 1))
-    return sorted(output.difference(STOP_TERMS))
-
-
-def _matching_terms(query_terms: set[str], value: str) -> list[str]:
-    return sorted(query_terms.intersection(_terms(value)))
-
-
-def _score(
-    query_terms: set[str], title: str, tags: str, conclusion: str, block: str, repo_match: bool
-) -> tuple[int, dict[str, list[str]]]:
-    evidence = {
-        "title_tags": _matching_terms(query_terms, f"{title},{tags}"),
-        "conclusion": _matching_terms(query_terms, conclusion),
-        "body": _matching_terms(query_terms, block),
-    }
-    evidence = {field: terms for field, terms in evidence.items() if terms}
-    score = 3 * sum(min(len(term), 8) for term in evidence.get("title_tags", []))
-    score += 2 * sum(min(len(term), 8) for term in evidence.get("conclusion", []))
-    score += sum(min(len(term), 8) for term in evidence.get("body", []))
-    if score and repo_match:
-        score += 4
-    return score, evidence
 
 
 def _conclusion(doc_text: str, entry_id: str) -> str:
@@ -76,45 +27,38 @@ def _conclusion(doc_text: str, entry_id: str) -> str:
     return ""
 
 
-def _entry_block(doc_text: str, entry_id: str) -> str:
-    lines: list[str] = []
-    active = False
-    for line in doc_text.splitlines():
-        header = ENTRY_HEADER_RE.match(line)
-        if header:
-            if active:
-                break
-            active = header.group(1) == entry_id
-        if active:
-            lines.append(line)
-    return "\n".join(lines)
-
-
-def _non_negative_int(value: str) -> int:
-    parsed = int(value)
-    if parsed < 0:
-        raise argparse.ArgumentTypeError("必须大于或等于 0")
-    return parsed
+def _entry_summary(row: IndexRow, wiki_root: Path, page_cache: dict[str, str], scope: str) -> dict[str, str]:
+    if row.file_path not in page_cache:
+        page_cache[row.file_path] = _read_text(wiki_root / row.file_path)
+    doc_text = page_cache[row.file_path]
+    return {
+        "id": row.entry_id,
+        "kind": row.kind,
+        "title": row.title,
+        "tags": row.tags,
+        "scope": scope,
+        "file": row.file_path,
+        "conclusion": _conclusion(doc_text, row.entry_id),
+    }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="低成本创建 team-pitfalls 前置检查状态并返回候选摘要")
+    parser = argparse.ArgumentParser(description="创建 team-pitfalls 分层前置检查状态并返回仓库领域/全局领域/仓库/全局摘要")
     parser.add_argument("--task-id", required=True, help="本轮稳定任务 ID，不要包含敏感信息")
-    parser.add_argument("--query", required=True, help="本轮任务的一句话关键词摘要，不要传完整用户正文")
-    parser.add_argument("--wiki-root", help="LLM Wiki 根目录；未传时读取环境变量或配置文件")
-    parser.add_argument("--repo", help="当前仓库名，用于提升仓库级候选优先级")
+    parser.add_argument("--query", help="兼容旧调用保留；分层查找不再使用 query 做召回")
+    parser.add_argument("--wiki-root", help="LLM Wiki 根目录；未传时读取环境变量、配置文件或默认 ~/.team-pitfalls-wiki")
+    parser.add_argument("--repo", help="当前仓库名，用于读取仓库级记录")
+    parser.add_argument("--domain", help="当前领域名；可单独用于读取全局领域级记录，配合 --repo 时优先读取仓库领域级记录")
     parser.add_argument("--skill-root", help="team-pitfalls skill 根目录；默认从当前脚本反查")
     parser.add_argument("--artifact-root", default="artifacts/repos", help="对外产物相对根目录")
-    parser.add_argument("--max-candidates", type=_non_negative_int, default=0, help="默认 0 表示不截断；大于 0 时显式限流")
-    parser.add_argument("--min-score", type=_non_negative_int, default=4, help="最低相关分；默认过滤仅正文弱碰撞")
     parser.add_argument("--force", action="store_true", help="覆盖同 task-id 的未完成状态")
     parser.add_argument("--verbose", action="store_true", help="输出完整预检状态，默认只输出紧凑摘要")
     args = parser.parse_args()
 
     task_id = validate_task_id(args.task_id)
-    query = args.query.strip()
-    if not query or len(query) > 256:
-        raise SystemExit("--query 必须是 1-256 字符的一句话关键词摘要")
+    query = (args.query or "").strip()
+    if len(query) > 256:
+        raise SystemExit("--query 最多 256 字符")
     if sys.version_info < (3, 9):
         raise SystemExit(f"team-pitfalls 需要 Python >= 3.9，当前为 {sys.version.split()[0]}")
 
@@ -127,6 +71,7 @@ def main() -> int:
         raise SystemExit(f"Skill 文件不完整: {', '.join(str(path) for path in missing_skill_files)}")
 
     wiki_root = _resolve_wiki_root(args.wiki_root)
+    _ensure_wiki_scaffold(wiki_root)
     llms_path = wiki_root / "llms.txt"
     index_path = wiki_root / "index.md"
     missing_wiki_files = [path for path in (llms_path, index_path) if not path.is_file()]
@@ -139,38 +84,51 @@ def main() -> int:
 
     raw_repo = (args.repo or "").strip()
     repo = safe_slug(raw_repo, "repo") if raw_repo else ""
+    raw_domain = (args.domain or "").strip()
+    domain = safe_slug(raw_domain, "domain") if raw_domain else ""
     rows = _parse_index_rows(_read_text(index_path))
-    query_terms = set(_terms(query))
     page_cache: dict[str, str] = {}
-    ranked: list[tuple[int, IndexRow, str, dict[str, list[str]]]] = []
-    for row in rows:
-        if row.file_path not in page_cache:
-            page_cache[row.file_path] = _read_text(wiki_root / row.file_path)
-        doc_text = page_cache[row.file_path]
-        conclusion = _conclusion(doc_text, row.entry_id)
-        block = _entry_block(doc_text, row.entry_id)
-        repo_match = bool(repo and row.file_path.startswith(f"repos/{repo}/"))
-        if row.file_path.startswith("repos/") and not repo_match:
-            continue
-        score, evidence = _score(query_terms, row.title, row.tags, conclusion, block, repo_match)
-        if score >= args.min_score:
-            ranked.append((score, row, conclusion, evidence))
-    ranked.sort(key=lambda item: (-item[0], item[1].entry_id))
+    levels: list[dict[str, object]] = []
 
-    candidates: list[dict[str, object]] = []
-    for score, row, conclusion, evidence in ranked:
-        if args.max_candidates and len(candidates) >= args.max_candidates:
-            break
-        candidates.append(
-            {
-                "id": row.entry_id,
-                "title": row.title,
-                "conclusion": conclusion,
-                "scope": "repo" if row.file_path.startswith("repos/") else "common",
-                "score": score,
-                "matches": evidence,
-            }
-        )
+    if repo and domain:
+        domain_prefix = f"repos/{repo}/domains/{domain}/"
+        domain_entries = [
+            _entry_summary(row, wiki_root, page_cache, "domain")
+            for row in rows
+            if row.file_path.startswith(domain_prefix)
+        ]
+        levels.append({"scope": "domain", "repo": repo, "domain": domain, "entry_count": len(domain_entries), "entries": domain_entries})
+
+    if domain:
+        global_domain_prefix = f"domains/{domain}/"
+        global_domain_entries = [
+            _entry_summary(row, wiki_root, page_cache, "global_domain")
+            for row in rows
+            if row.file_path.startswith(global_domain_prefix)
+        ]
+        levels.append({"scope": "global_domain", "domain": domain, "entry_count": len(global_domain_entries), "entries": global_domain_entries})
+
+    if repo:
+        repo_prefix = f"repos/{repo}/"
+        repo_entries = [
+            _entry_summary(row, wiki_root, page_cache, "repo")
+            for row in rows
+            if row.file_path.startswith(repo_prefix) and f"{repo_prefix}domains/" not in row.file_path
+        ]
+        levels.append({"scope": "repo", "repo": repo, "entry_count": len(repo_entries), "entries": repo_entries})
+
+    global_entries = [
+        _entry_summary(row, wiki_root, page_cache, "global")
+        for row in rows
+        if row.file_path.startswith("pitfalls/")
+    ]
+    levels.append({"scope": "global", "entry_count": len(global_entries), "entries": global_entries})
+
+    entry_ids = [
+        str(entry["id"])
+        for level in levels
+        for entry in level["entries"]  # type: ignore[index]
+    ]
 
     state: dict[str, object] = {
         "schema_version": STATE_SCHEMA_VERSION,
@@ -179,8 +137,9 @@ def main() -> int:
         "started_at": utc_now(),
         "wiki_root": str(wiki_root),
         "repo": repo,
+        "domain": domain,
         "query": query,
-        "candidate_ids": [str(item["id"]) for item in candidates],
+        "entry_ids": entry_ids,
         "skill_sha256": file_sha256(skill_path),
         "index_sha256": file_sha256(index_path),
         "artifact_repo_root": artifact_reference("task.json", repo or "repo", args.artifact_root).rsplit("/", 1)[0],
@@ -189,13 +148,10 @@ def main() -> int:
 
     output: dict[str, object] = {
         "task_id": task_id,
-        "candidate_count": len(candidates),
-        "candidates": candidates,
-        "next": (
-            "retry once with expanded synonyms and failure mechanisms before concluding no match"
-            if not candidates
-            else "review all candidates; apply relevant records; finish with end_task.py"
-        ),
+        "lookup_order": [str(level["scope"]) for level in levels],
+        "entry_count": len(entry_ids),
+        "levels": levels,
+        "next": "read levels in order: repo domain -> global domain -> repo -> global; apply relevant records; finish with end_task.py",
     }
     if args.verbose:
         output["state"] = state

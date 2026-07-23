@@ -93,7 +93,7 @@ npx skills add xiyueyezibile/xiy-skills@reply-generator -g -y
 
 ### team-pitfalls
 
-团队踩坑收集器：面向非纯闲聊工程任务，在任务开始前检查已有坑，任务结束前复盘是否值得沉淀
+团队踩坑收集器：面向非纯闲聊工程任务，在任务开始前按仓库领域级、全局领域级、仓库级、全局级加载已有知识，任务结束前复盘是否值得沉淀
 
 ```bash
 npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
@@ -102,36 +102,42 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 功能特性：
 
 - 使用时固定包含“前置检查 + 后置复盘”两段动作
-- 提供 `begin_task.py` / `end_task.py` 两步生命周期门禁：前者在脚本内全量扫描并返回全部相关候选摘要，后者只要求明确记录或跳过沉淀
-- 前置检查命中并实际采用记录时自动累计使用次数，区分“问题再次出现”和“知识被复用”
-- 召回准确性优先：匹配标题、标签、结论和正文，支持中文短语切分，默认不做 Top-N 截断
-- 仓库级候选严格按当前仓库隔离，并通过字段加权过滤正文弱碰撞，兼顾召回与准确性
-- 每条候选返回标题/标签、结论和正文的命中词证据，避免只看黑盒分数判断相关性
-- 查询使用“原词 + 同义词 + 失效机制”关键词；首轮零候选必须扩词复查一次，避免词面差异造成漏召回
-- 不重复输出 `SKILL.md`、`llms.txt` 或全量 `index.md`，全量扫描发生在本地脚本内
+- 提供 `begin_task.py` / `end_task.py` 两步生命周期门禁：前者按分层顺序返回知识摘要，后者只要求明确记录或跳过沉淀
+- 前置检查实际采用记录时自动累计使用次数，区分“问题再次出现”和“知识被复用”
+- 分层上下文优先：仓库领域级 `repos/<repo>/domains/<domain>/` → 全局领域级 `domains/<domain>/` → 仓库级 `repos/<repo>/` → 全局级 `pitfalls/`
+- 同一仓库可拆多个领域；业务跨仓库时还可维护全局领域级，用来反向发现其他仓库的同领域记录
+- 适合放进领域级的知识：某类业务、某个页面、页面簇、业务链路、端内入口、领域术语、领域指标或类似稳定范围
+- 不再使用 query 召回、字段打分、命中词证据或 Top-N 截断作为主流程
+- 每条记录返回 `ID + Kind + Title + Tags + File + 结论` 摘要，按层级顺序审阅和采用
+- 不重复输出 `SKILL.md`、`llms.txt` 或全量 `index.md`，分层读取发生在本地脚本内
 - 复杂 JSON 支持通过 `--json-file` 安全传入，兼容带空格路径与 UTF-8 BOM，并提供明确解析位置
 - 自动化产物统一归一化为 `artifacts/repos/<repo-slug>/<file-slug>` 相对 POSIX 路径
 - 采用外部 LLM Wiki root 管理踩坑记录，skill 包内不再保存知识库正文
-- 标准结构包含 `llms.txt`、`index.md`、`pitfalls/` 和 `repos/<repo-name>/`
+- 标准结构包含 `SCHEMA.md`、`llms.txt`、`index.md`、`domains/<domain-name>/`、`pitfalls/`、`repos/<repo-name>/` 和 `repos/<repo-name>/domains/<domain-name>/`
 - 只记录“新同学不看大概率会写错”的可复用问题
 - 将具体案例按“案例事实 → 失效机制 → 条件式规则”提炼，通用化时保留因果结构而非简单删除专有名词
-- 通用坑位必须通过跨场景迁移测试；无法举出第二场景时保留为仓库级知识
-- 支持同一事件双层沉淀：仓库记录保存证据与边界，通用记录保存机制、触发信号和可执行动作
+- 通用坑位必须通过跨场景迁移测试；无法举出第二场景时优先保留为领域级或仓库级知识
+- 支持同一事件多层沉淀：仓库领域记录保存当前仓库业务边界，全局领域记录保存跨仓库业务共性，仓库记录保存仓库共性，全局记录保存跨项目机制
 - 对同类问题做去重与累计次数
-- 通过 `--wiki-root` 或 `TEAM_PITFALLS_LLM_WIKI_ROOT` 指定外部 LLM Wiki root 后，写入或删除条目时自动刷新
-- 也支持 `~/.config/team-pitfalls/config.json` 持久配置 wiki root，方便每次自动定位
-- 未配置 Wiki root 时脚本会中止，并提示用户主动配置 `--wiki-root`、`TEAM_PITFALLS_LLM_WIKI_ROOT` 或 `~/.config/team-pitfalls/config.json`
+- 默认使用 `~/.team-pitfalls-wiki` 作为外部 LLM Wiki root，并在首次运行时自动初始化基础结构
+- 仍可通过 `--wiki-root`、`TEAM_PITFALLS_LLM_WIKI_ROOT` 或 `~/.config/team-pitfalls/config.json` 覆盖默认路径，方便团队共享同一份知识库
 - 提供迁移脚本，可把旧版 `references/` 记录按新体系重新编号后转入外部 LLM Wiki root
 - 约束不记录密钥、token、cookie 等敏感信息
 
 生命周期门禁示例：
 
 ```bash
-python3 skills/team-pitfalls/scripts/begin_task.py --task-id task-20260717 --query "API 影响面与页面流量" --repo fe-buyin
+python3 skills/team-pitfalls/scripts/begin_task.py --task-id task-20260717 --repo fe-buyin --domain daren
 python3 skills/team-pitfalls/scripts/end_task.py --task-id task-20260717 --result skipped --reason "没有新的可迁移知识"
 ```
 
-持久配置示例：
+默认目录：
+
+```text
+~/.team-pitfalls-wiki
+```
+
+覆盖默认目录的持久配置示例：
 
 ```json
 {

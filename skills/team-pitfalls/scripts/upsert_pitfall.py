@@ -14,12 +14,17 @@ from cli_support import add_json_source_arguments, load_json_object
 WIKI_ROOT_ENV = "TEAM_PITFALLS_LLM_WIKI_ROOT"
 CONFIG_ENV = "TEAM_PITFALLS_CONFIG"
 DEFAULT_CONFIG_PATH = Path("~/.config/team-pitfalls/config.json")
+DEFAULT_WIKI_ROOT = Path("~/.team-pitfalls-wiki")
 
 TYPE_TO_FILE: dict[str, str] = {
     "mcp": "pitfalls/tools-and-internal-platforms.md",
     "tools": "pitfalls/tools-and-internal-platforms.md",
     "git": "pitfalls/git-and-commit.md",
     "docs": "pitfalls/docs-and-portability.md",
+}
+DOMAIN_KIND_TO_FILE: dict[str, str] = {
+    "glossary": "glossary.md",
+    "corrections": "corrections.md",
 }
 
 ENTRY_ID_RE = re.compile(r"^(P|G|C)-\d{3}$")
@@ -118,29 +123,11 @@ def _wiki_root_from_config() -> str:
     return str(parsed.get("wiki_root", "")).strip()
 
 
-def _missing_wiki_root_message() -> str:
-    return "\n".join(
-        [
-            "Team Pitfalls LLM Wiki root 未配置，不能执行前置检查或写入沉淀。",
-            "",
-            "请先主动配置外部 Wiki 目录，然后重新运行本命令。可任选一种方式：",
-            "1. 单次执行：传入 --wiki-root <path>",
-            f"2. 当前 shell：export {WIKI_ROOT_ENV}=<path>",
-            f"3. 持久配置：写入 {DEFAULT_CONFIG_PATH.expanduser()}",
-            "",
-            "配置文件示例：",
-            '{',
-            '  "wiki_root": "/path/to/team-pitfalls-wiki"',
-            '}',
-        ]
-    )
-
-
 def _resolve_wiki_root(raw_path: Optional[str]) -> Path:
     configured_path = (raw_path or os.environ.get(WIKI_ROOT_ENV, "") or _wiki_root_from_config()).strip()
-    if not configured_path:
-        raise SystemExit(_missing_wiki_root_message())
-    return Path(configured_path).expanduser().resolve()
+    if configured_path:
+        return Path(configured_path).expanduser().resolve()
+    return DEFAULT_WIKI_ROOT.expanduser().resolve()
 
 
 def _sanitize_slug(value: str) -> str:
@@ -377,29 +364,127 @@ def _write_llms_txt(wiki_root: Path, rows: list[IndexRow]) -> None:
             if row.file_path.startswith("repos/") and len(row.file_path.split("/")) >= 3
         }
     )
+    global_domain_names = sorted(
+        {
+            row.file_path.split("/")[1]
+            for row in rows
+            if row.file_path.startswith("domains/") and len(row.file_path.split("/")) >= 3
+        }
+    )
     lines = [
         "# Team Pitfalls",
         "",
-        "> Reusable pitfalls and repo-specific knowledge for coding agents.",
+        "> Curated team pitfalls and layered business knowledge for coding agents.",
+        "",
+        "This file is a curated map, not a sitemap. Follow the reading order and open only linked Markdown pages needed for the current task.",
         "",
         "## Entry Points",
         "",
         "- [Index](index.md): canonical list of all records",
+        "- [Global Domains](domains/): cross-repo business domains",
         "- [Common Pitfalls](pitfalls/): cross-project reusable pitfalls",
-        "- [Repositories](repos/): repo-specific glossary and corrections",
+        "- [Repositories](repos/): repo-specific domains, glossary, and corrections",
         "",
         "## Reading Order",
         "",
-        "1. Read `index.md` first.",
-        "2. Open only the matched page under `pitfalls/` or `repos/`.",
-        "3. Prefer repo-specific records over common records when both apply.",
+        "1. Read repo-domain records under `repos/<repo>/domains/<domain>/` first when repo and domain are known.",
+        "2. Then read global-domain records under `domains/<domain>/`.",
+        "3. Then read repo records under `repos/<repo>/`.",
+        "4. Finally read global records under `pitfalls/`.",
         "",
     ]
+    if global_domain_names:
+        lines.extend(["## Known Global Domains", ""])
+        lines.extend(f"- [{domain}](domains/{domain}/index.md)" for domain in global_domain_names)
+        lines.append("")
     if repo_names:
         lines.extend(["## Known Repositories", ""])
         lines.extend(f"- [{repo}](repos/{repo}/index.md)" for repo in repo_names)
         lines.append("")
     _write_text(wiki_root / "llms.txt", "\n".join(lines))
+
+
+def _global_domain_names(rows: list[IndexRow]) -> list[str]:
+    names = set()
+    for row in rows:
+        parts = row.file_path.split("/")
+        if row.file_path.startswith("domains/") and len(parts) >= 3:
+            names.add(parts[1])
+        if row.file_path.startswith("repos/") and len(parts) >= 5 and parts[2] == "domains":
+            names.add(parts[3])
+    return sorted(names)
+
+
+def _write_domains_index(wiki_root: Path, rows: list[IndexRow]) -> None:
+    domain_names = _global_domain_names(rows)
+    lines = ["# Global Domains", "", "跨仓库业务领域入口。", ""]
+    for domain in domain_names:
+        lines.append(f"- [{domain}]({domain}/index.md)")
+    lines.append("")
+    _write_text(wiki_root / "domains" / "index.md", "\n".join(lines))
+
+
+def _write_global_domain_index(wiki_root: Path, domain: str, rows: list[IndexRow]) -> None:
+    domain_prefix = f"domains/{domain}/"
+    domain_rows = [row for row in rows if row.file_path.startswith(domain_prefix)]
+    related_repos = sorted(
+        {
+            row.file_path.split("/")[1]
+            for row in rows
+            if row.file_path.startswith("repos/") and f"/domains/{domain}/" in row.file_path
+        }
+    )
+    lines = [f"# {domain} Global Domain", "", f"{domain} 跨仓库业务领域知识。", ""]
+    if related_repos:
+        lines.extend(["## Related Repositories", ""])
+        lines.extend(f"- [{repo}](../../repos/{repo}/domains/{domain}/index.md)" for repo in related_repos)
+        lines.append("")
+    lines.extend(["## Global Domain Records", ""])
+    for row in sorted(domain_rows, key=lambda item: item.entry_id):
+        lines.append(f"- `{row.entry_id}` `{row.kind}` [{row.title}]({Path(row.file_path).name})")
+    lines.append("")
+    _write_text(wiki_root / "domains" / domain / "index.md", "\n".join(lines))
+
+
+def _domain_names_for_repo(rows: list[IndexRow], repo: str) -> list[str]:
+    prefix = f"repos/{repo}/domains/"
+    names = set()
+    for row in rows:
+        if not row.file_path.startswith(prefix):
+            continue
+        parts = row.file_path.split("/")
+        if len(parts) >= 5:
+            names.add(parts[3])
+    return sorted(names)
+
+
+def _write_repo_index(wiki_root: Path, repo: str, rows: list[IndexRow]) -> None:
+    repo_rows = [
+        row
+        for row in rows
+        if row.file_path.startswith(f"repos/{repo}/") and f"repos/{repo}/domains/" not in row.file_path
+    ]
+    repo_lines = [f"# {repo} Index", "", f"{repo} 的仓库级踩坑、术语和纠错记录。", ""]
+    domain_names = _domain_names_for_repo(rows, repo)
+    if domain_names:
+        repo_lines.extend(["## Domains", ""])
+        repo_lines.extend(f"- [{domain}](domains/{domain}/index.md)" for domain in domain_names)
+        repo_lines.append("")
+    repo_lines.extend(["## Repo Records", ""])
+    for row in sorted(repo_rows, key=lambda item: item.entry_id):
+        repo_lines.append(f"- `{row.entry_id}` `{row.kind}` [{row.title}](../../{row.file_path})")
+    repo_lines.append("")
+    _write_text(wiki_root / "repos" / repo / "index.md", "\n".join(repo_lines))
+
+
+def _write_domain_index(wiki_root: Path, repo: str, domain: str, rows: list[IndexRow]) -> None:
+    domain_prefix = f"repos/{repo}/domains/{domain}/"
+    domain_rows = [row for row in rows if row.file_path.startswith(domain_prefix)]
+    domain_lines = [f"# {repo} / {domain} Index", "", f"{repo} 仓库 {domain} 领域的踩坑、术语和纠错记录。", ""]
+    for row in sorted(domain_rows, key=lambda item: item.entry_id):
+        domain_lines.append(f"- `{row.entry_id}` `{row.kind}` [{row.title}](../../../../{row.file_path})")
+    domain_lines.append("")
+    _write_text(wiki_root / "repos" / repo / "domains" / domain / "index.md", "\n".join(domain_lines))
 
 
 def _ensure_page(path: Path, title: str, description: str) -> None:
@@ -409,11 +494,13 @@ def _ensure_page(path: Path, title: str, description: str) -> None:
 
 
 def _ensure_wiki_scaffold(wiki_root: Path) -> None:
+    _ensure_page(wiki_root / "SCHEMA.md", "Team Pitfalls Schema", "Team Pitfalls LLM Wiki 的结构、层级和维护规则见 skill references/knowledge-authoring.md。")
     _ensure_page(wiki_root / "pitfalls" / "tools-and-internal-platforms.md", "Tools And Internal Platforms", "工具、鉴权、内部平台读取相关通用坑位。")
     _ensure_page(wiki_root / "pitfalls" / "git-and-commit.md", "Git And Commit", "Git、提交信息、分支和发布流程相关通用坑位。")
     _ensure_page(wiki_root / "pitfalls" / "docs-and-portability.md", "Docs And Portability", "文档、路径、脚本和可移植性相关通用坑位。")
     _write_index(wiki_root, _parse_index_rows(_read_index(wiki_root)))
     _write_llms_txt(wiki_root, _parse_index_rows(_read_index(wiki_root)))
+    _write_domains_index(wiki_root, _parse_index_rows(_read_index(wiki_root)))
 
 
 def _find_by_title(rows: list[IndexRow], title: str, kind: Optional[str]) -> Optional[IndexRow]:
@@ -490,11 +577,9 @@ def _update_existing_entry_block(doc_text: str, entry_id: str) -> str:
             end = index
             break
 
-    today = _today()
     updated: list[str] = []
     for line in [item.rstrip("\n") for item in lines[start:end]]:
-        if line.startswith("- **最近出现**:"):
-            updated.append(f"- **最近出现**: {today}")
+        if line.startswith("- **首次出现**:") or line.startswith("- **最近出现**:"):
             continue
         if line.startswith("- **出现次数**:"):
             match = re.search(r"(\d+)", line)
@@ -506,13 +591,10 @@ def _update_existing_entry_block(doc_text: str, entry_id: str) -> str:
 
 
 def _format_pitfall(entry_id: str, entry: PitfallEntry) -> str:
-    today = _today()
     return "\n".join(
         [
             f"### {entry_id}: {entry.title}",
             f"- **标签**: {entry.tags or 'TODO'}",
-            f"- **首次出现**: {today}",
-            f"- **最近出现**: {today}",
             "- **出现次数**: 1",
             "- **最近使用**: 从未",
             "- **使用次数**: 0",
@@ -533,13 +615,10 @@ def _format_pitfall(entry_id: str, entry: PitfallEntry) -> str:
 
 
 def _format_glossary(entry_id: str, entry: GlossaryEntry) -> str:
-    today = _today()
     return "\n".join(
         [
             f"### {entry_id}: {entry.title}",
             f"- **标签**: {entry.tags or 'TODO'}",
-            f"- **首次出现**: {today}",
-            f"- **最近出现**: {today}",
             "- **出现次数**: 1",
             "- **最近使用**: 从未",
             "- **使用次数**: 0",
@@ -558,13 +637,10 @@ def _format_glossary(entry_id: str, entry: GlossaryEntry) -> str:
 
 
 def _format_correction(entry_id: str, entry: CorrectionEntry) -> str:
-    today = _today()
     return "\n".join(
         [
             f"### {entry_id}: {entry.title}",
             f"- **标签**: {entry.tags or 'TODO'}",
-            f"- **首次出现**: {today}",
-            f"- **最近出现**: {today}",
             "- **出现次数**: 1",
             "- **最近使用**: 从未",
             "- **使用次数**: 0",
@@ -647,6 +723,72 @@ def _handle_common(args: argparse.Namespace, payload_obj: Optional[dict[str, obj
     return 0
 
 
+def _handle_global_domain(args: argparse.Namespace, payload_obj: Optional[dict[str, object]], wiki_root: Path) -> int:
+    if payload_obj is None:
+        raise SystemExit("global domain mode requires --json or --json-file")
+    if not args.domain or not args.kind:
+        raise SystemExit("global domain mode requires --domain and --kind")
+
+    domain = _sanitize_slug(args.domain)
+    if args.kind == "glossary":
+        entry = _glossary_from_json(payload_obj)
+        prefix = "G"
+        kind = "glossary"
+        file_path = f"domains/{domain}/glossary.md"
+        formatter = _format_glossary
+        page_title = f"{domain} Global Glossary"
+    else:
+        entry = _correction_from_json(payload_obj)
+        prefix = "C"
+        kind = "correction"
+        file_path = f"domains/{domain}/corrections.md"
+        formatter = _format_correction
+        page_title = f"{domain} Global Corrections"
+
+    if not entry.title:
+        raise SystemExit("missing title")
+
+    rows = _parse_index_rows(_read_index(wiki_root))
+    desired_id = _desired_id(payload_obj, prefix)
+    domain_index_path = wiki_root / "domains" / domain / "index.md"
+    _ensure_page(domain_index_path, f"{domain} Global Domain", f"{domain} 跨仓库业务领域知识。")
+    target_path = wiki_root / file_path
+    _ensure_page(target_path, page_title, f"{domain} 的全局领域 {kind} 记录。")
+
+    existing = _find_by_title_in_file(rows, entry.title, kind, file_path)
+    if existing is None and desired_id:
+        existing = _find_by_id_in_file(rows, desired_id, file_path)
+
+    if existing is not None:
+        target_path = wiki_root / existing.file_path
+        doc_before = _read_text(target_path)
+        doc_after = _update_existing_entry_block(doc_before, existing.entry_id)
+        updated_row = IndexRow(existing.entry_id, kind, entry.title, entry.tags or existing.tags, existing.file_path)
+        rows_after = _upsert_row(rows, updated_row)
+    else:
+        if args.kind == "glossary":
+            _validate_new_glossary_entry(entry)
+        else:
+            _validate_new_correction_entry(entry)
+        entry_id = desired_id or _next_id(rows, prefix)
+        doc_before = _read_text(target_path)
+        doc_after = _insert_block(doc_before, formatter(entry_id, entry))
+        updated_row = IndexRow(entry_id, kind, entry.title, entry.tags, file_path)
+        rows_after = _upsert_row(rows, updated_row)
+
+    if args.dry_run:
+        _print_diff_if_changed(doc_before, doc_after, wiki_root, target_path)
+        print("index.md / llms.txt / domains index / global domain index would be refreshed")
+        return 0
+
+    _write_text(target_path, doc_after)
+    _write_global_domain_index(wiki_root, domain, rows_after)
+    _write_domains_index(wiki_root, rows_after)
+    _write_index(wiki_root, rows_after)
+    _write_llms_txt(wiki_root, rows_after)
+    return 0
+
+
 def _handle_repo(args: argparse.Namespace, payload_obj: Optional[dict[str, object]], wiki_root: Path) -> int:
     if payload_obj is None:
         raise SystemExit("repo mode requires --json or --json-file")
@@ -654,20 +796,21 @@ def _handle_repo(args: argparse.Namespace, payload_obj: Optional[dict[str, objec
         raise SystemExit("repo mode requires --repo and --kind")
 
     repo = _sanitize_slug(args.repo)
+    domain = _sanitize_slug(args.domain) if args.domain else ""
     if args.kind == "glossary":
         entry = _glossary_from_json(payload_obj)
         prefix = "G"
         kind = "glossary"
-        file_path = f"repos/{repo}/glossary.md"
+        file_path = f"repos/{repo}/domains/{domain}/glossary.md" if domain else f"repos/{repo}/glossary.md"
         formatter = _format_glossary
-        page_title = f"{repo} Glossary"
+        page_title = f"{repo} {domain} Glossary" if domain else f"{repo} Glossary"
     else:
         entry = _correction_from_json(payload_obj)
         prefix = "C"
         kind = "correction"
-        file_path = f"repos/{repo}/corrections.md"
+        file_path = f"repos/{repo}/domains/{domain}/corrections.md" if domain else f"repos/{repo}/corrections.md"
         formatter = _format_correction
-        page_title = f"{repo} Corrections"
+        page_title = f"{repo} {domain} Corrections" if domain else f"{repo} Corrections"
 
     if not entry.title:
         raise SystemExit("missing title")
@@ -677,6 +820,9 @@ def _handle_repo(args: argparse.Namespace, payload_obj: Optional[dict[str, objec
     desired_id = _desired_id(payload_obj, prefix)
     repo_index_path = wiki_root / "repos" / repo / "index.md"
     _ensure_page(repo_index_path, f"{repo} Index", f"{repo} 的仓库级踩坑、术语和纠错记录。")
+    if domain:
+        domain_index_path = wiki_root / "repos" / repo / "domains" / domain / "index.md"
+        _ensure_page(domain_index_path, f"{repo} / {domain} Index", f"{repo} 仓库 {domain} 领域的踩坑、术语和纠错记录。")
     target_path = wiki_root / file_path
     _ensure_page(target_path, page_title, f"{repo} 的 {kind} 记录。")
 
@@ -701,19 +847,17 @@ def _handle_repo(args: argparse.Namespace, payload_obj: Optional[dict[str, objec
         updated_row = IndexRow(entry_id, kind, entry.title, entry.tags, file_path)
         rows_after = _upsert_row(rows, updated_row)
 
-    repo_rows = [row for row in rows_after if row.file_path.startswith(f"repos/{repo}/")]
-    repo_lines = [f"# {repo} Index", "", f"{repo} 的仓库级踩坑、术语和纠错记录。", ""]
-    for row in sorted(repo_rows, key=lambda item: item.entry_id):
-        repo_lines.append(f"- `{row.entry_id}` `{row.kind}` [{row.title}](../../{row.file_path})")
-    repo_lines.append("")
-
     if args.dry_run:
         _print_diff_if_changed(doc_before, doc_after, wiki_root, target_path)
-        print("index.md / llms.txt / repo index would be refreshed")
+        print("index.md / llms.txt / repo index / domain index would be refreshed")
         return 0
 
     _write_text(target_path, doc_after)
-    _write_text(repo_index_path, "\n".join(repo_lines))
+    _write_repo_index(wiki_root, repo, rows_after)
+    if domain:
+        _write_domain_index(wiki_root, repo, domain, rows_after)
+        _write_global_domain_index(wiki_root, domain, rows_after)
+        _write_domains_index(wiki_root, rows_after)
     _write_index(wiki_root, rows_after)
     _write_llms_txt(wiki_root, rows_after)
     return 0
@@ -721,10 +865,12 @@ def _handle_repo(args: argparse.Namespace, payload_obj: Optional[dict[str, objec
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="写入或更新 team-pitfalls LLM Wiki 条目")
-    parser.add_argument("--wiki-root", help=f"LLM Wiki 根目录，也可用环境变量 {WIKI_ROOT_ENV}")
+    parser.add_argument("--wiki-root", help=f"LLM Wiki 根目录，也可用环境变量 {WIKI_ROOT_ENV}；默认 ~/.team-pitfalls-wiki")
     parser.add_argument("--type", choices=sorted(TYPE_TO_FILE.keys()))
     parser.add_argument("--file", help="wiki root 下的相对文件路径，例如 pitfalls/custom.md")
     parser.add_argument("--repo", help="仓库名，用于写入 repos/<repo-name>/")
+    parser.add_argument("--domain", help="领域名；配合 --repo 写入仓库领域级，配合 --global-domain 写入全局领域级")
+    parser.add_argument("--global-domain", action="store_true", help="写入 domains/<domain>/ 跨仓库领域级")
     parser.add_argument("--kind", choices=("glossary", "corrections"))
     parser.add_argument("--dry-run", action="store_true")
     add_json_source_arguments(parser)
@@ -743,6 +889,12 @@ def main() -> int:
     _ensure_wiki_scaffold(wiki_root)
     payload_obj = load_json_object(args.json, args.json_file)
 
+    if args.global_domain and args.repo:
+        raise SystemExit("--global-domain cannot be used with --repo")
+    if args.global_domain:
+        return _handle_global_domain(args, payload_obj, wiki_root)
+    if args.domain and not args.repo:
+        raise SystemExit("--domain requires --repo unless --global-domain is set")
     if args.repo:
         return _handle_repo(args, payload_obj, wiki_root)
     return _handle_common(args, payload_obj, wiki_root)

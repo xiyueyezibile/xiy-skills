@@ -6,23 +6,35 @@
 
 ```text
 <wiki-root>/
+  SCHEMA.md
   llms.txt
   index.md
+  domains/index.md
+  domains/<domain-name>/index.md
+  domains/<domain-name>/glossary.md
+  domains/<domain-name>/corrections.md
   pitfalls/*.md
   repos/<repo-name>/index.md
   repos/<repo-name>/glossary.md
   repos/<repo-name>/corrections.md
+  repos/<repo-name>/domains/<domain-name>/index.md
+  repos/<repo-name>/domains/<domain-name>/glossary.md
+  repos/<repo-name>/domains/<domain-name>/corrections.md
 ```
 
 - `P-*`：跨项目通用坑位。
-- `G-*`：仓库术语。
-- `C-*`：仓库级 AI 纠错。
+- `G-*`：仓库或领域术语。
+- `C-*`：仓库或领域 AI 纠错。
+- `domains/<domain-name>/`：跨仓库的全局领域级知识，用于描述某类业务在多个仓库中的共同规则，并反向关联相关仓库。
+- `repos/<repo-name>/domains/<domain-name>/`：当前仓库内的领域级知识，用于描述该仓库里某类业务、某个页面、某条链路或相近范围的规则。
+
+`llms.txt` 遵循 LLM 入口文件的轻量约定：一个 H1、简短摘要、少量上下文说明和 H2 分组链接；它是 curated map，不是 sitemap。`SCHEMA.md` 作为结构与维护规则入口，`index.md` 是全量条目索引，具体页面保持自包含、可整页读取，不依赖 chunk 拼接。
 
 ## 从案例抽象通用知识
 
 按“案例事实 → 失效机制 → 条件式规则 → 跨场景验证 → 适用边界”处理。
 
-通用规则使用“当……时，应先……，否则……”表达。至少给出原案例的抽象表达和一个不同场景的迁移例；无法给出第二场景时，只保留为仓库级知识。
+通用规则使用“当……时，应先……，否则……”表达。至少给出原案例的抽象表达和一个不同场景的迁移例；无法给出第二场景时，只保留为领域级或仓库级知识。
 
 通用条目必须满足：
 
@@ -35,17 +47,34 @@
 
 不要生成带 `TODO` 的低信息量通用条目。已有通用条目覆盖同一机制时，只累计出现次数。
 
-## 仓库级记录隔离
+## 领域级与仓库级记录隔离
 
-仓库术语和仓库级 AI 纠错只在同一个 `repos/<repo-name>/` 下判断是否已有。其他仓库已有相同或相近机制时，只能作为撰写当前仓库记录的参考，不能阻止当前仓库新增记录。
+领域术语和领域级 AI 纠错只在同一个 `repos/<repo-name>/domains/<domain-name>/` 下判断是否已有。仓库术语和仓库级 AI 纠错只在同一个 `repos/<repo-name>/` 下判断是否已有。其他仓库或其他领域已有相同或相近机制时，只能作为撰写当前记录的参考，不能阻止当前仓库/领域新增记录。
 
-当本轮纠错或术语会在当前仓库复发时：
+应该放进领域级的知识：
 
-- 当前仓库已有等价 `G-*`/`C-*`：更新出现次数，不新增。
-- 只有其他仓库已有等价记录：在当前仓库新增 `G-*`/`C-*`，并按当前仓库的路径、页面、接口或业务术语重写适用范围。
+- 这部分知识属于某类业务，例如达人、选品、招商、订单、结算、投放、观测等。
+- 这个坑属于某个页面、页面簇、路由、业务入口或端内链路。
+- 这个术语、接口、埋点、指标或配置只在某个业务域内有稳定含义。
+- 类似问题会在同一业务域内反复出现，但不一定影响整个仓库。
+
+应该放进全局领域级的知识：
+
+- 同一个业务领域跨多个仓库存在共同规则、术语、页面口径或坑位。
+- 需要从一个仓库反向发现其他仓库的同领域记录。
+- 领域规则不属于单个仓库实现细节，但又没有通用到所有项目。
+
+当本轮纠错或术语会在当前领域复发时：
+
+- 当前领域已有等价 `G-*`/`C-*`：更新出现次数，不新增。
+- 只有当前仓库或其他领域已有等价记录：在当前领域新增 `G-*`/`C-*`，并按当前领域的页面、接口、业务术语或链路重写适用范围。
+- 规则跨仓库复用但未达到全局通用：另写或更新 `domains/<domain-name>/glossary.md` 或 `domains/<domain-name>/corrections.md`，用于全局领域级反查。
+- 无法归属具体领域但会在当前仓库复发：写入仓库级 `repos/<repo-name>/glossary.md` 或 `repos/<repo-name>/corrections.md`。
 - 机制足够跨项目复用且满足通用条目标准：可另行沉淀 `P-*`，但不能替代必要的当前仓库记录。
 
-仓库级新增记录必须填写标签、错误理解/常见误解、用户修正/正确理解、结论、触发线索、最小示例、适用范围和不适用范围；不要留下 `TODO` 占位。
+领域级和仓库级新增记录必须填写标签、错误理解/常见误解、用户修正/正确理解、结论、触发线索、最小示例、适用范围和不适用范围；不要留下 `TODO` 占位。
+
+知识条目不记录 `首次出现` 和 `最近出现` 字段；只保留出现次数和使用次数。更新已有条目时，如果旧记录中存在这两个时间字段，应在同次写入中移除。
 
 ## 安全传参
 
@@ -53,19 +82,29 @@
 
 ```bash
 python3 skills/team-pitfalls/scripts/upsert_pitfall.py \
-  --wiki-root <path> \
   --type docs \
   --json-file "/tmp/pitfall payload.json"
 ```
 
 `--json` 与 `--json-file` 互斥；`--json-file -` 从标准输入读取。文件路径含空格时必须作为单个参数传入。
+Wiki root 默认使用 `~/.team-pitfalls-wiki`；需要团队共享或迁移既有知识库时，再用 `--wiki-root <path>`、`TEAM_PITFALLS_LLM_WIKI_ROOT` 或 `~/.config/team-pitfalls/config.json` 覆盖。
 
 仓库术语或纠错增加：
 
 ```bash
 python3 skills/team-pitfalls/scripts/upsert_pitfall.py \
-  --wiki-root <path> \
   --repo <repo-name> \
+  --domain <domain-name> \
+  --kind glossary \
+  --json-file <payload.json>
+```
+
+省略 `--domain` 时写入仓库级；传入 `--domain` 时写入仓库领域级。写入跨仓库全局领域级：
+
+```bash
+python3 skills/team-pitfalls/scripts/upsert_pitfall.py \
+  --global-domain \
+  --domain <domain-name> \
   --kind glossary \
   --json-file <payload.json>
 ```
@@ -73,7 +112,7 @@ python3 skills/team-pitfalls/scripts/upsert_pitfall.py \
 `--kind corrections` 写入纠错。删除使用：
 
 ```bash
-python3 skills/team-pitfalls/scripts/delete_pitfall.py --wiki-root <path> --id P-001
+python3 skills/team-pitfalls/scripts/delete_pitfall.py --id P-001
 ```
 
 迁移旧 references 使用 `migrate_references_to_llm_wiki.py`。
@@ -81,9 +120,9 @@ python3 skills/team-pitfalls/scripts/delete_pitfall.py --wiki-root <path> --id P
 ## 计数口径
 
 - 出现次数：同类问题再次发生或再次被纠正。
-- 使用次数：前置候选实际影响本轮判断、方案或实现。
+- 使用次数：前置分层记录实际影响本轮判断、方案或实现。
 
-同一轮同一条最多记录一次；候选未采用不计数。
+同一轮同一条最多记录一次；分层记录未采用不计数。
 
 ## 产物路径
 

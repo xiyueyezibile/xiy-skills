@@ -9,6 +9,7 @@ from typing import Optional
 from upsert_pitfall import (
     CONFIG_ENV,
     DEFAULT_CONFIG_PATH,
+    DEFAULT_WIKI_ROOT,
     WIKI_ROOT_ENV,
     IndexRow,
     _ensure_wiki_scaffold,
@@ -74,29 +75,11 @@ def _wiki_root_from_config() -> str:
     return str(parsed.get("wiki_root", "")).strip()
 
 
-def _missing_wiki_root_message() -> str:
-    return "\n".join(
-        [
-            "Team Pitfalls LLM Wiki root 未配置，不能迁移旧版 references。",
-            "",
-            "请先主动配置外部 Wiki 目录，然后重新运行本命令。可任选一种方式：",
-            "1. 单次执行：传入 --wiki-root <path>",
-            f"2. 当前 shell：export {WIKI_ROOT_ENV}=<path>",
-            f"3. 持久配置：写入 {DEFAULT_CONFIG_PATH.expanduser()}",
-            "",
-            "配置文件示例：",
-            '{',
-            '  "wiki_root": "/path/to/team-pitfalls-wiki"',
-            '}',
-        ]
-    )
-
-
 def _resolve_wiki_root(raw_path: Optional[str]) -> Path:
     configured_path = (raw_path or os.environ.get(WIKI_ROOT_ENV, "") or _wiki_root_from_config()).strip()
-    if not configured_path:
-        raise SystemExit(_missing_wiki_root_message())
-    return Path(configured_path).expanduser().resolve()
+    if configured_path:
+        return Path(configured_path).expanduser().resolve()
+    return DEFAULT_WIKI_ROOT.expanduser().resolve()
 
 
 def _parse_legacy_common_rows(index_text: str) -> list[LegacyCommonRow]:
@@ -321,7 +304,7 @@ def _migrate_items(wiki_root: Path, rows: list[IndexRow], items: list[MigrationI
 def main() -> int:
     parser = argparse.ArgumentParser(description="把旧版 team-pitfalls references 目录迁移到标准 LLM Wiki root")
     parser.add_argument("--source-references", required=True, help="旧版 references 目录路径")
-    parser.add_argument("--wiki-root", help=f"LLM Wiki 根目录，也可用环境变量 {WIKI_ROOT_ENV}")
+    parser.add_argument("--wiki-root", help=f"LLM Wiki 根目录，也可用环境变量 {WIKI_ROOT_ENV}；默认 ~/.team-pitfalls-wiki")
     parser.add_argument("--dry-run", action="store_true", help="只展示迁移计划，不写入文件")
     args = parser.parse_args()
 

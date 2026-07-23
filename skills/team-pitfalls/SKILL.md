@@ -1,11 +1,11 @@
 ---
 name: team-pitfalls
-description: 所有非纯闲聊工程任务的召回优先团队知识前置检查与后置复盘 Skill。处理代码、仓库、技术方案、文档规范、内部平台、业务术语、经验沉淀或 AI 纠错时必须调用；脚本扫描全量知识但只向模型返回相关摘要，禁止重复加载完整 Skill 或全量 Wiki 索引。
+description: 所有非纯闲聊工程任务的分层团队知识前置检查与后置复盘 Skill。处理代码、仓库、领域上下文、技术方案、文档规范、经验沉淀或 AI 纠错时必须调用。
 ---
 
 # Team Pitfalls
 
-用外部 LLM Wiki 共享团队踩坑、仓库术语和 AI 纠错。召回准确性优先于 Token、时延和步骤数；确定性全量扫描交给本地脚本，模型只消费所有相关候选的摘要。
+用外部 LLM Wiki 共享团队踩坑、跨仓库领域知识、仓库术语、仓库领域知识和 AI 纠错。上下文利用率优先通过固定层级提升：仓库领域级先于全局领域级，全局领域级先于仓库级，仓库级先于全局级；不再把 query 召回和打分候选作为主流程。
 
 ## 快路径
 
@@ -18,20 +18,18 @@ Skill 正文由平台触发时已经加载，不要再次 `cat SKILL.md`，也�
 ```bash
 python3 skills/team-pitfalls/scripts/begin_task.py \
   --task-id <稳定且无敏感信息的 ID> \
-  --query "<不超过 256 字符的原词、同义词和失效机制关键词>" \
-  --repo <repo-name>
+  --repo <repo-name> \
+  --domain <domain-name>
 ```
 
 - `--repo` 可选。
-- `--query` 不写自然语言摘要；提供 5-12 个逗号分隔关键词，同时包含用户原词、常见同义词、技术机制和可能的错误表现。
-- 默认返回全部正相关候选的 `ID + 标题 + 一句话结论 + 范围 + 分数 + 命中字段/词`，不做 Top-N 截断。
-- 审阅全部候选时优先看 `matches.title_tags` 和 `matches.conclusion`；仅正文弱命中的记录仍保留供复核，但不能仅凭分数机械采用。
-- 匹配范围覆盖标题、标签、结论和正文，并对中文短语做 2-4 字切分，减少措辞差异造成的漏召回。
-- 指定仓库时只检索该仓库专属记录与通用记录，其他仓库记录不参与竞争。
-- 默认最低分只过滤“正文碰巧出现一个弱词”的噪声；标题、标签或结论命中仍可进入。
-- 只有用户明确接受漏召回风险时才传 `--max-candidates` 限流。
-- 首轮零候选时必须扩展同义词和失效机制后用同一 task-id 加 `--force` 重试一次；第二轮仍为零才继续用户任务。
-- 候选结论足够指导任务时直接采用；只有结论无法判断边界时，才打开对应正文块，禁止读取整页。
+- `--domain` 可选；可单独用于全局领域级，也可配合 `--repo` 读取仓库领域级。
+- `--query` 仅为兼容旧调用保留，不参与召回、打分或过滤。
+- 开始任务时按固定顺序读取：仓库领域级 `repos/<repo>/domains/<domain>/` → 全局领域级 `domains/<domain>/` → 仓库级 `repos/<repo>/` → 全局级 `pitfalls/`。
+- 默认返回每一层的 `ID + Kind + Title + Tags + File + 结论` 摘要，不做 query 召回、分数排序或 Top-N 截断。
+- 如果知识属于某类业务、某个页面、某条业务链路或类似稳定范围，必须传 `--domain`。
+- 仓库领域级和全局领域级都命中时，优先采用仓库领域级；全局领域级可用于反向发现其他仓库同领域记录。
+- 仓库级和全局级冲突时，优先采用仓库级。
 - 实际采用后调用一次 `record_pitfall_usage.py --id <ID>`；只浏览未采用不计数。
 - 不向用户复述完整预检过程，除非命中内容会改变方案或形成风险提示。
 
@@ -39,7 +37,7 @@ python3 skills/team-pitfalls/scripts/begin_task.py \
 
 任务完成后只判断本轮是否产生新的可迁移机制、仓库术语或用户纠错。
 
-仓库级知识按 `--repo` 隔离判断是否已有：其他仓库已有相同或相近记录，只能作为参考，不能当作当前仓库“现有记录已覆盖”的理由。若本轮问题会在当前仓库复发，且当前仓库没有等价 `G-*`/`C-*`，必须写入当前仓库的 `repos/<repo-name>/glossary.md` 或 `repos/<repo-name>/corrections.md`。
+知识按 `--repo` 和 `--domain` 隔离判断是否已有：其他仓库或其他领域已有相同或相近记录，只能作为参考，不能当作当前仓库/领域“现有记录已覆盖”的理由。若本轮问题会在当前仓库领域复发，且当前仓库领域没有等价 `G-*`/`C-*`，必须优先写入 `repos/<repo-name>/domains/<domain-name>/glossary.md` 或 `repos/<repo-name>/domains/<domain-name>/corrections.md`。若该业务领域跨仓库复用，另写或更新 `domains/<domain-name>/glossary.md` 或 `domains/<domain-name>/corrections.md`。无法归属具体领域时才写入仓库级。
 
 没有新知识：
 
@@ -74,8 +72,10 @@ python3 skills/team-pitfalls/scripts/end_task.py \
 
 ## 不可省略的边界
 
-- Wiki root 优先级：命令参数 > `TEAM_PITFALLS_LLM_WIKI_ROOT` > `~/.config/team-pitfalls/config.json`。
-- 缺少配置时脚本应中止并给出上述三种配置方式；不能假装完成检查。
-- 仓库级知识优先于通用知识，但两者不能混写成一条。
+- Wiki root 优先级：命令参数 > `TEAM_PITFALLS_LLM_WIKI_ROOT` > `~/.config/team-pitfalls/config.json` > `~/.team-pitfalls-wiki`。
+- 用户未配置时自动使用 `~/.team-pitfalls-wiki` 并初始化基础 Wiki 结构；只有需要团队共享或迁移既有知识库时才引导用户覆盖路径。
+- 仓库领域级知识优先于全局领域级知识，全局领域级知识优先于仓库级知识，仓库级知识优先于全局知识；四者不能混写成一条。
+- 知识条目不记录 `首次出现` 和 `最近出现`；只保留出现次数和使用次数。
 - 不记录账号、token、cookie、用户正文或其他敏感信息。
-- 脚本必须扫描完整索引与条目文本后再判断相关性；不能为了省成本跳过仓库级或通用级候选。
+- `llms.txt` 只做精选入口和读取顺序，不当 sitemap；基础结构包含 `SCHEMA.md`、`index.md`、`llms.txt`、`domains/`、`repos/` 和 `pitfalls/`。
+- 脚本必须保留分层顺序；不能用 query 召回、分数排序或 Top-N 截断替代仓库领域级 → 全局领域级 → 仓库级 → 全局级查找。
