@@ -1,6 +1,6 @@
 ---
 name: component-validation-mock
-description: 为前端组件创建可复现的页面首屏 Mock 验证环境，把用户提供的 URL 视为目标页面而非组件现成展示页，先在该页面对应入口注入 dev-only Mock，确保同一页面 URL 的首屏直接显示组件，再完成桌面端或移动端截图及简单交互验证。高清截图默认使用 macOS 系统原生截图；移动端复用用户预先准备的 Chrome DevTools 设备页面，缺少页面或权限时明确提醒；用户明确不需要高清时回退浏览器截图。当用户要求“组件 mock”“把组件放到首屏看效果”“打开页面截图验证”“高清截图”“移动端调试截图”“点击/输入后截图”“为组件做视觉验收”时，务必使用此 skill。
+description: 为前端组件创建可复现的页面首屏 Mock 验证环境，把用户提供的 URL 视为目标页面而非组件现成展示页，先在该页面对应入口注入 dev-only Mock，确保同一页面 URL 的首屏直接显示组件，再优先使用用户外部 Chrome 浏览器完成桌面端或移动端截图及简单交互验证。默认交付高清版：高清截图使用 macOS 系统原生截图；移动端复用用户预先准备的 Chrome DevTools 设备页面，缺少页面或权限时明确提醒；用户明确不需要高清时才回退浏览器截图。当用户要求“组件 mock”“把组件放到首屏看效果”“打开页面截图验证”“高清截图”“移动端调试截图”“点击/输入后截图”“为组件做视觉验收”时，务必使用此 skill。
 compatibility: 需要可编辑的前端仓库、可运行的本地开发服务、Browser 或 Chrome 浏览器控制能力；高清模式需要 macOS screencapture 与屏幕录制权限，移动端高清模式还需要用户预先准备 Chrome DevTools 设备页面。
 ---
 
@@ -23,6 +23,12 @@ compatibility: 需要可编辑的前端仓库、可运行的本地开发服务�
 ```
 
 每次执行至少交付组件首屏 Mock 代码、Mock 改动清单、操作 JSON、截图和报告。不要把改动清单、操作 JSON、截图、报告或 URL 映射写入业务仓库。
+
+默认交付要求：
+
+- 优先使用用户外部 Chrome 浏览器验证页面；先检查外部浏览器插件连接，连接成功后使用外部浏览器导航、观察和交互。
+- 除非用户明确说“不需要高清”“普通截图即可”，否则默认交付高清版，使用 macOS `screencapture` 截取外部 Chrome 所在显示器，再从原始 PNG 无缩放裁切组件或页面区域。
+- 外部 Chrome 不可用时，先引导完成外部浏览器连接；只有用户同意降级或环境确实无法使用外部 Chrome 时，才改用内置 Browser，并在报告中说明。
 
 ## 开始前收集
 
@@ -194,7 +200,7 @@ python3 skills/component-validation-mock/scripts/validate_browser_actions.py \
 
 ### 5. 执行浏览器动作
 
-用户明确指定 Browser 或 Chrome 时遵从指定；否则根据验证 URL 选择可用浏览器。最终导航必须发生在 Mock 代码完成并且开发服务重新编译之后。
+默认先使用用户外部 Chrome 浏览器：先按外部浏览器能力检查插件连接，连接成功后使用外部浏览器打开验证 URL、观察 DOM、执行交互。用户明确指定 Browser 时遵从指定；外部 Chrome 不可用时先引导连接或说明阻塞，只有用户同意降级时才改用内置 Browser。最终导航必须发生在 Mock 代码完成并且开发服务重新编译之后。
 
 将 JSON 动作映射到浏览器的实际 API：
 
@@ -213,7 +219,7 @@ python3 skills/component-validation-mock/scripts/validate_browser_actions.py \
 
 ### 6. 截图验证
 
-先读取并遵循 [系统高清截图流程](references/system-screenshot.md)。除非用户明确表示“不需要高清”“普通截图即可”，默认选择高清模式：使用 macOS `screencapture` 截取 Chrome 所在显示器，再从原始 PNG 无缩放裁出目标页面或组件区域。Chrome 位于副屏时直接用 `-D <display-id>` 捕获该屏，不要先把窗口拉回主屏。禁止截图后插值放大，因为这不会增加文字和边缘细节。
+先读取并遵循 [系统高清截图流程](references/system-screenshot.md)。除非用户明确表示“不需要高清”“普通截图即可”，默认选择高清模式并交付高清版：使用 macOS `screencapture` 截取外部 Chrome 所在显示器，再从原始 PNG 无缩放裁出目标页面或组件区域。Chrome 位于副屏时直接用 `-D <display-id>` 捕获该屏，不要先把窗口拉回主屏。禁止截图后插值放大，因为这不会增加文字和边缘细节。
 
 移动端高清截图不要由 Agent 临时打开、关闭或反复切换 DevTools。优先复用用户已经准备好的 Chrome DevTools 设备页面；开始前确认页面处于设备模式、目标 viewport 正确且组件已重新初始化。若没有准备，提醒用户准备一个可长期复用的移动端 Chrome 页面并打开 DevTools 设备工具栏，然后等待用户确认。后续任务继续复用这个页面，避免每次重复打扰用户。
 
