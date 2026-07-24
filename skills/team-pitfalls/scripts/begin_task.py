@@ -63,16 +63,17 @@ def main() -> int:
 
     skill_root = Path(args.skill_root).expanduser().resolve() if args.skill_root else Path(__file__).resolve().parent.parent
     skill_path = skill_root / "SKILL.md"
-    required_scripts = ("begin_task.py", "end_task.py", "record_pitfall_usage.py", "upsert_pitfall.py")
+    required_scripts = ("begin_task.py", "end_task.py")
     required_files = [skill_path] + [skill_root / "scripts" / name for name in required_scripts]
     missing_skill_files = [path for path in required_files if not path.is_file()]
     if missing_skill_files:
         raise SystemExit(f"Skill 文件不完整: {', '.join(str(path) for path in missing_skill_files)}")
 
     wiki_root = _resolve_wiki_root()
-    _ensure_wiki_scaffold(wiki_root)
     llms_path = wiki_root / "llms.txt"
     index_path = wiki_root / "index.md"
+    if not llms_path.exists() or not index_path.exists():
+        _ensure_wiki_scaffold(wiki_root)
     missing_wiki_files = [path for path in (llms_path, index_path) if not path.is_file()]
     if missing_wiki_files:
         raise SystemExit(f"LLM Wiki 缺少基础入口文件: {', '.join(str(path) for path in missing_wiki_files)}")

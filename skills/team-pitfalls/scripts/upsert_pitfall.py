@@ -589,15 +589,24 @@ def _update_existing_entry_block(doc_text: str, entry_id: str) -> str:
             break
 
     updated: list[str] = []
+    has_usage_count = False
     for line in [item.rstrip("\n") for item in lines[start:end]]:
-        if line.startswith("- **首次出现**:") or line.startswith("- **最近出现**:"):
+        if (
+            line.startswith("- **首次出现**:")
+            or line.startswith("- **最近出现**:")
+            or line.startswith("- **出现次数**:")
+            or line.startswith("- **最近使用**:")
+        ):
             continue
-        if line.startswith("- **出现次数**:"):
+        if line.startswith("- **使用次数**:"):
             match = re.search(r"(\d+)", line)
             count = int(match.group(1)) if match else 0
-            updated.append(f"- **出现次数**: {count + 1}")
+            updated.append(f"- **使用次数**: {count + 1}")
+            has_usage_count = True
             continue
         updated.append(line)
+    if not has_usage_count:
+        updated.insert(1, "- **使用次数**: 1")
     return "".join(lines[:start]) + "\n".join(updated) + "\n" + "".join(lines[end:])
 
 
@@ -606,8 +615,6 @@ def _format_pitfall(entry_id: str, entry: PitfallEntry) -> str:
         [
             f"### {entry_id}: {entry.title}",
             f"- **标签**: {entry.tags or 'TODO'}",
-            "- **出现次数**: 1",
-            "- **最近使用**: 从未",
             "- **使用次数**: 0",
             f"- **一句话结论**: {entry.conclusion or 'TODO'}",
             "- **容易写错的原因**:",
@@ -630,8 +637,6 @@ def _format_glossary(entry_id: str, entry: GlossaryEntry) -> str:
         [
             f"### {entry_id}: {entry.title}",
             f"- **标签**: {entry.tags or 'TODO'}",
-            "- **出现次数**: 1",
-            "- **最近使用**: 从未",
             "- **使用次数**: 0",
             f"- **标准含义**: {entry.standard_meaning or 'TODO'}",
             "- **常见误解**:",
@@ -652,8 +657,6 @@ def _format_correction(entry_id: str, entry: CorrectionEntry) -> str:
         [
             f"### {entry_id}: {entry.title}",
             f"- **标签**: {entry.tags or 'TODO'}",
-            "- **出现次数**: 1",
-            "- **最近使用**: 从未",
             "- **使用次数**: 0",
             f"- **错误理解**: {entry.wrong_understanding or 'TODO'}",
             f"- **用户修正**: {entry.user_correction or 'TODO'}",
@@ -877,7 +880,7 @@ def _handle_repo(args: argparse.Namespace, payload_obj: Optional[dict[str, objec
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="写入或更新 team-pitfalls LLM Wiki 条目")
+    parser = argparse.ArgumentParser(description="维护/批处理用途：写入或更新 team-pitfalls LLM Wiki 条目")
     parser.add_argument("--type", choices=sorted(TYPE_TO_FILE.keys()))
     parser.add_argument("--file", help="wiki root 下的相对文件路径，例如 pitfalls/custom.md")
     parser.add_argument("--repo", help="仓库名，用于写入 repos/<repo-name>/")

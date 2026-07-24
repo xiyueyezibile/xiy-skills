@@ -2,6 +2,8 @@
 
 仅在写入、删除知识或维护本 Skill 时读取。
 
+常规任务中，新增、更新、删除知识，以及累计 `使用次数`，都由 agent 直接编辑 `~/.team-pitfalls-wiki` 下的 Markdown 页面和索引；`upsert_pitfall.py`、`delete_pitfall.py` 与 `record_pitfall_usage.py` 只保留给维护者做离线批处理、迁移或调试，不是默认工作流。
+
 ## Wiki 结构
 
 ```text
@@ -47,7 +49,7 @@
 - 标签包含机制词和常见触发词。
 - 明确适用与不适用范围。
 
-不要生成带 `TODO` 的低信息量通用条目。已有通用条目覆盖同一机制时，只累计出现次数。
+不要生成带 `TODO` 的低信息量通用条目。已有通用条目覆盖同一机制时，只累计 `使用次数`。
 
 ## 领域级与仓库级记录隔离
 
@@ -68,7 +70,7 @@
 
 当本轮纠错或术语会在当前领域复发时：
 
-- 当前领域已有等价 `G-*`/`C-*`：更新出现次数，不新增。
+- 当前领域已有等价 `G-*`/`C-*`：更新 `使用次数`，不新增。
 - 只有当前仓库或其他领域已有等价记录：在当前领域新增 `G-*`/`C-*`，并按当前领域的页面、接口、业务术语或链路重写适用范围。
 - 规则跨仓库复用但未达到全局通用：另写或更新 `domains/<domain-name>/glossary.md` 或 `domains/<domain-name>/corrections.md`，用于全局领域级反查。
 - 无法归属具体领域但会在当前仓库复发：写入仓库级 `repos/<repo-name>/glossary.md` 或 `repos/<repo-name>/corrections.md`。
@@ -76,50 +78,33 @@
 
 领域级和仓库级新增记录必须填写标签、错误理解/常见误解、用户修正/正确理解、结论、触发线索、最小示例、适用范围和不适用范围；不要留下 `TODO` 占位。
 
-知识条目不记录 `首次出现` 和 `最近出现` 字段；只保留出现次数和使用次数。更新已有条目时，如果旧记录中存在这两个时间字段，应在同次写入中移除。
+知识条目默认只保留 `使用次数` 这一统计字段；不要再新增 `出现次数`、`最近使用`、`首次出现`、`最近出现`。更新已有条目时，如果旧记录里还存在这些字段，应在同次更新中移除。
 
-## 安全传参
+## Agent 直接编辑
 
-复杂 JSON 使用 UTF-8 文件，避免 shell 内联转义：
+新增、更新、删除知识时：
 
-```bash
-python3 skills/team-pitfalls/scripts/upsert_pitfall.py \
-  --type docs \
-  --json-file "/tmp/pitfall payload.json"
-```
+1. 先按作用域决定目标文件：`pitfalls/`、`domains/<domain>/`、`repos/<repo>/` 或 `repos/<repo>/domains/<domain>/`。
+2. 打开 [manual-edit-template.md](manual-edit-template.md)，按对应模板组织条目内容。
+3. 直接编辑正文页，并同步刷新 `index.md`、`llms.txt`、相关 repo/domain `index.md`。
+4. 更新已有条目时只做最小改动：只累计 `使用次数`，并删除旧的 `出现次数`、`最近使用`、`首次出现`、`最近出现` 字段。
+5. 删除条目时移除正文块和索引行；若某个 repo/domain 索引暂无条目，保留页面并写 `暂无条目。`
+6. 完成后再运行 `end_task.py` 记录 `recorded` 或 `skipped`。
 
-`--json` 与 `--json-file` 互斥；`--json-file -` 从标准输入读取。文件路径含空格时必须作为单个参数传入。
 Wiki root 固定使用 `~/.team-pitfalls-wiki`；不支持 `--wiki-root`、环境变量或配置文件覆盖。
 
-仓库术语或纠错增加：
+## 兼容脚本
 
-```bash
-python3 skills/team-pitfalls/scripts/upsert_pitfall.py \
-  --repo <repo-name> \
-  --domain <domain-name> \
-  --kind glossary \
-  --json-file <payload.json>
-```
+以下脚本仍保留，但仅用于维护者离线批处理、迁移或调试：
 
-省略 `--domain` 时写入仓库级；传入 `--domain` 时写入仓库领域级。写入跨仓库全局领域级：
+- `upsert_pitfall.py`：根据 JSON/CLI 参数批量写入或更新条目。
+- `delete_pitfall.py`：按 `ID` 或 `title` 删除条目并刷新索引。
+- `record_pitfall_usage.py`：按 `ID` 批量累计 `使用次数`，并清理旧统计字段。
 
-```bash
-python3 skills/team-pitfalls/scripts/upsert_pitfall.py \
-  --global-domain \
-  --domain <domain-name> \
-  --kind glossary \
-  --json-file <payload.json>
-```
-
-`--kind corrections` 写入纠错。领域级 payload 可额外带 `domain_description` 字段，用于维护该领域 `index.md` 的简短介绍。删除使用：
-
-```bash
-python3 skills/team-pitfalls/scripts/delete_pitfall.py --id P-001
-```
+常规工程任务不要把这三个脚本作为默认路径。
 
 ## 计数口径
 
-- 出现次数：同类问题再次发生或再次被纠正。
 - 使用次数：前置分层记录实际影响本轮判断、方案或实现。
 
 同一轮同一条最多记录一次；分层记录未采用不计数。

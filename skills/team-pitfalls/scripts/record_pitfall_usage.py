@@ -37,34 +37,36 @@ def _entry_range(lines: list[str], entry_id: str) -> tuple[int, int]:
 def _increment_usage(doc_text: str, entry_id: str, today: str) -> str:
     lines = doc_text.splitlines()
     start, end = _entry_range(lines, entry_id)
-    recent_index = -1
     count_index = -1
-    occurrence_index = -1
+    stale_indexes: list[int] = []
 
     for index in range(start + 1, end):
         line = lines[index]
-        if line.startswith("- **出现次数**:"):
-            occurrence_index = index
-        elif line.startswith("- **最近使用**:"):
-            recent_index = index
-        elif line.startswith("- **使用次数**:"):
+        if line.startswith("- **使用次数**:"):
             count_index = index
+        elif (
+            line.startswith("- **出现次数**:")
+            or line.startswith("- **最近使用**:")
+            or line.startswith("- **首次出现**:")
+            or line.startswith("- **最近出现**:")
+        ):
+            stale_indexes.append(index)
 
-    if recent_index >= 0:
-        lines[recent_index] = f"- **最近使用**: {today}"
     if count_index >= 0:
         match = COUNT_RE.search(lines[count_index])
         current_count = int(match.group(1)) if match else 0
         lines[count_index] = f"- **使用次数**: {current_count + 1}"
     else:
-        insert_at = occurrence_index + 1 if occurrence_index >= 0 else start + 1
-        lines[insert_at:insert_at] = [f"- **最近使用**: {today}", "- **使用次数**: 1"]
+        lines[start + 1:start + 1] = ["- **使用次数**: 1"]
+
+    for index in reversed(stale_indexes):
+        del lines[index]
 
     return "\n".join(lines).rstrip() + "\n"
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="记录 team-pitfalls 条目在前置检查中的实际使用")
+    parser = argparse.ArgumentParser(description="维护/批处理用途：记录 team-pitfalls 条目在前置检查中的实际使用；累计使用次数并清理旧统计字段")
     parser.add_argument("--id", action="append", required=True, dest="entry_ids", help="命中的条目 ID，可重复传入")
     parser.add_argument("--dry-run", action="store_true", help="仅预览变更，不写入文件")
     args = parser.parse_args()

@@ -30,7 +30,7 @@ python3 skills/team-pitfalls/scripts/begin_task.py \
 - 如果知识属于某类业务、某个页面、某条业务链路或类似稳定范围，必须传 `--domain`。
 - 仓库领域级和全局领域级都命中时，优先采用仓库领域级；全局领域级可用于反向发现其他仓库同领域记录。
 - 仓库级和全局级冲突时，优先采用仓库级。
-- 实际采用后调用一次 `record_pitfall_usage.py --id <ID>`；只浏览未采用不计数。
+- 实际采用后，由 agent 最小更新正文条目的 `使用次数`；只浏览未采用不计数。
 - 不向用户复述完整预检过程，除非命中内容会改变方案或形成风险提示。
 
 ### 2. 后置复盘
@@ -38,6 +38,11 @@ python3 skills/team-pitfalls/scripts/begin_task.py \
 任务完成后只判断本轮是否产生新的可迁移机制、仓库术语或用户纠错。
 
 知识按 `--repo` 和 `--domain` 隔离判断是否已有：其他仓库或其他领域已有相同或相近记录，只能作为参考，不能当作当前仓库/领域“现有记录已覆盖”的理由。若本轮问题会在当前仓库领域复发，且当前仓库领域没有等价 `G-*`/`C-*`，必须优先写入 `repos/<repo-name>/domains/<domain-name>/glossary.md` 或 `repos/<repo-name>/domains/<domain-name>/corrections.md`。若该业务领域跨仓库复用，另写或更新 `domains/<domain-name>/glossary.md` 或 `domains/<domain-name>/corrections.md`。无法归属具体领域时才写入仓库级。
+
+- 新增、更新、删除知识条目，或累计 `使用次数` 时，默认**不要**调用 `upsert_pitfall.py`、`delete_pitfall.py` 或 `record_pitfall_usage.py`。
+- 先读取 [knowledge-authoring.md](references/knowledge-authoring.md) 和 [manual-edit-template.md](references/manual-edit-template.md)，由 agent 直接编辑 Wiki Markdown 与相关索引。
+- 写入完成后，再运行 `end_task.py` 记录 `recorded`；没有新增知识时照常运行 `end_task.py --result skipped`。
+- `upsert_pitfall.py` / `delete_pitfall.py` / `record_pitfall_usage.py` 仅保留给维护者做离线批处理、迁移或调试，不是常规工程任务路径。
 
 没有新知识：
 
@@ -61,7 +66,7 @@ python3 skills/team-pitfalls/scripts/end_task.py \
 
 ## 何时加载详细规范
 
-仅在以下情况读取 [knowledge-authoring.md](references/knowledge-authoring.md)：
+仅在以下情况读取 [knowledge-authoring.md](references/knowledge-authoring.md)；新增、更新、删除知识时同时读取 [manual-edit-template.md](references/manual-edit-template.md)：
 
 - 新增、更新或删除知识条目。
 - 用户要求优化 `team-pitfalls` 本身。
@@ -76,7 +81,8 @@ python3 skills/team-pitfalls/scripts/end_task.py \
 - 首次运行时自动初始化 `~/.team-pitfalls-wiki` 的基础 Wiki 结构。
 - 仓库领域级知识优先于全局领域级知识，全局领域级知识优先于仓库级知识，仓库级知识优先于全局知识；四者不能混写成一条。
 - 每个领域 `index.md` 必须保留简短介绍，说明业务、页面/链路范围、典型术语或指标边界；刷新索引不能覆盖人工补充的简介。
-- 知识条目不记录 `首次出现` 和 `最近出现`；只保留出现次数和使用次数。
+- 知识条目不记录 `出现次数`、`最近使用`、`首次出现` 和 `最近出现`；只保留 `使用次数` 这一统计字段。
 - 不记录账号、token、cookie、用户正文或其他敏感信息。
 - `llms.txt` 只做精选入口和读取顺序，不当 sitemap；基础结构包含 `SCHEMA.md`、`index.md`、`llms.txt`、`domains/`、`repos/` 和 `pitfalls/`。
 - 脚本必须保留分层顺序；不能用 query 召回、分数排序或 Top-N 截断替代仓库领域级 → 全局领域级 → 仓库级 → 全局级查找。
+- 常规任务中的新增、更新、删除知识，以及 `使用次数` 的累计，必须由 agent 直接编辑 Markdown 页面和索引，不把 `upsert_pitfall.py` / `delete_pitfall.py` / `record_pitfall_usage.py` 当作默认执行路径。
