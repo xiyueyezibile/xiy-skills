@@ -213,7 +213,7 @@ python3 skills/component-validation-mock/scripts/validate_browser_actions.py \
 
 ### 6. 截图验证
 
-先读取并遵循 [系统高清截图流程](references/system-screenshot.md)。除非用户明确表示“不需要高清”“普通截图即可”，默认选择高清模式：使用 macOS `screencapture` 截取 Chrome 所在显示器，再从原始 PNG 无缩放裁出目标页面或组件区域。禁止截图后插值放大，因为这不会增加文字和边缘细节。
+先读取并遵循 [系统高清截图流程](references/system-screenshot.md)。除非用户明确表示“不需要高清”“普通截图即可”，默认选择高清模式：使用 macOS `screencapture` 截取 Chrome 所在显示器，再从原始 PNG 无缩放裁出目标页面或组件区域。Chrome 位于副屏时直接用 `-D <display-id>` 捕获该屏，不要先把窗口拉回主屏。禁止截图后插值放大，因为这不会增加文字和边缘细节。
 
 移动端高清截图不要由 Agent 临时打开、关闭或反复切换 DevTools。优先复用用户已经准备好的 Chrome DevTools 设备页面；开始前确认页面处于设备模式、目标 viewport 正确且组件已重新初始化。若没有准备，提醒用户准备一个可长期复用的移动端 Chrome 页面并打开 DevTools 设备工具栏，然后等待用户确认。后续任务继续复用这个页面，避免每次重复打扰用户。
 
@@ -242,7 +242,7 @@ python3 <skill-dir>/scripts/validate_screenshot_resolution.py \
   --css-width 390 --css-height 844 --dpr 3
 ```
 
-系统高清截图使用 `file`、`sips` 或等效只读工具记录原始显示器截图和裁切后 PNG 的真实像素尺寸，并确认裁切过程没有缩放。浏览器截图兜底若输出像素不符，不能声明高清截图验证通过。元素内图片还应检查资源分辨率是否覆盖其实际渲染尺寸；资源本身分辨率不足时，在报告中单独提示。
+系统高清截图使用 `file`、`sips` 或等效只读工具记录原始显示器截图和裁切后 PNG 的真实像素尺寸，并确认裁切过程没有缩放。浏览器截图兜底若输出像素不符，或实际导出为 CSS 像素尺寸的 JPEG，即使页面 `devicePixelRatio` 正确，也不能声明高清截图验证通过。元素内图片还应检查资源分辨率是否覆盖其实际渲染尺寸；资源本身分辨率不足时，在报告中单独提示。
 
 每生成一张截图后执行一次全局保留策略：
 

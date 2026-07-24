@@ -51,7 +51,8 @@ npx skills add xiyueyezibile/xiy-skills@component-validation-mock -g -y
 功能特性：
 
 - 从用户 URL 反查真实页面入口，可复用已有 mock 数据和组件封装，但必须挂载回该页面
-- 高清模式默认使用 macOS 系统原生截图，双显示器先定位正确屏幕再无缩放裁切
+- 高清模式默认使用 macOS 系统原生截图；Chrome 在副屏时直接按显示器编号捕获该屏，再从原始 PNG 无缩放裁切，无需把窗口拉回主屏
+- Chrome/Browser 若只导出 CSS 像素尺寸 JPEG，即使页面 DPR 正确也判为普通截图，不会转 PNG 或放大后冒充高清
 - 移动端高清截图复用用户预先准备的 Chrome DevTools 设备页面；页面或权限未准备时给出一次性准备提醒
 - 用户明确不需要高清时回退普通浏览器截图，并清楚标记为非系统高清截图
 - 用户给出的 URL 仅用于锁定目标页面，不假设该地址原本就能看到组件
