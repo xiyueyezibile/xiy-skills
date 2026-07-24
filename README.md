@@ -50,14 +50,18 @@ npx skills add xiyueyezibile/xiy-skills@component-validation-mock -g -y
 
 功能特性：
 
-- 自动定位组件对应的真实页面和路由，优先复用仓库已有 demo、story 或 mock 机制
-- 将用户直接提供、配置/文档指出或浏览器验证通过的页面 URL 持久记录到 `~/.component-validation/page-urls.json`，避免后续猜错路径
-- 以 dev-only query 或验证路由把目标组件放到页面首屏，不污染生产入口
+- 从用户 URL 反查真实页面入口，可复用已有 mock 数据和组件封装，但必须挂载回该页面
+- 用户给出的 URL 仅用于锁定目标页面，不假设该地址原本就能看到组件
+- 在目标 URL 对应的真实页面入口增加 dev-only Mock，保留原 path/query/hash，并追加 `componentMock` 后打开验证
+- 在用户目录记录 Mock 改动文件、位置、锚点、前后片段和哈希；取消 Mock 时先与当前源码及 Git diff 对比，再做最小撤销
+- 将用户目标页面 URL 持久记录到 `~/.component-validation/page-urls.json`，不会用临时 Mock URL 覆盖
+- 禁止擅自切换到独立 story/demo，用同一目标页面首屏截图
 - 生成可机器校验的 `browser-actions.json`
 - 支持桌面端以及移动端 viewport、触摸和 user agent 模拟
+- 默认使用桌面端 DPR 2、移动端 DPR 3，并校验浏览器真实 DPR 与 PNG 输出像素，避免配置了高清但产物仍是 1x
 - 支持点击、输入、按键、下拉选择、滚动等简单交互
 - 自动打开目标页面，并在初始状态和关键交互后截图
-- 操作 JSON、截图和验证报告统一保存到 `~/.component-validation/cases/`，不写入业务仓库
+- Mock 改动清单、操作 JSON、截图和验证报告统一保存到 `~/.component-validation/cases/`，不写入业务仓库
 - 按修改时间全局只保留最近 `500` 张截图
 - 内置 JSON 校验脚本，禁止任意脚本执行、危险截图路径和敏感会话数据
 

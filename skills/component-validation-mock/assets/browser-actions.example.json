@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "caseName": "example-card-mobile",
+  "caseName": "coupon-card-mobile",
   "baseUrl": "http://127.0.0.1:3000",
   "device": {
     "kind": "mobile",
@@ -9,12 +9,13 @@
       "height": 844
     },
     "deviceScaleFactor": 3,
+    "requireNativeScale": true,
     "isTouch": true
   },
   "actions": [
     {
       "type": "open",
-      "path": "/demo?componentMock=example-card"
+      "path": "/coupon/list?tab=unused&componentMock=coupon-card-mobile#content"
     },
     {
       "type": "waitFor",

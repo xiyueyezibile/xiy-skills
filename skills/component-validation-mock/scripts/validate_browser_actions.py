@@ -135,10 +135,13 @@ def validate(payload: Any) -> None:
     require_positive_int(viewport.get("width"), "device.viewport.width")
     require_positive_int(viewport.get("height"), "device.viewport.height")
 
-    if "deviceScaleFactor" in device:
-        scale = device["deviceScaleFactor"]
-        if isinstance(scale, bool) or not isinstance(scale, (int, float)) or scale <= 0:
-            fail("device.deviceScaleFactor 必须是正数")
+    scale = device.get("deviceScaleFactor")
+    if isinstance(scale, bool) or not isinstance(scale, (int, float)):
+        fail("device.deviceScaleFactor 必须是数字")
+    if scale < 2 or scale > 4:
+        fail("device.deviceScaleFactor 必须在 2 到 4 之间")
+    if device.get("requireNativeScale") is not True:
+        fail("device.requireNativeScale 必须为 true")
     if "isTouch" in device and not isinstance(device["isTouch"], bool):
         fail("device.isTouch 必须是布尔值")
     if device["kind"] == "mobile" and device.get("isTouch") is not True:

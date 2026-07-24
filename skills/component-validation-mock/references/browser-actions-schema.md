@@ -14,6 +14,7 @@
       "height": 844
     },
     "deviceScaleFactor": 3,
+    "requireNativeScale": true,
     "isTouch": true,
     "userAgent": "optional"
   },
@@ -28,6 +29,8 @@
 - `baseUrl` 仅允许 `http://` 或 `https://`
 - `device.kind` 为 `desktop` 或 `mobile`
 - viewport 宽高为正整数
+- `deviceScaleFactor` 必填且范围为 `2` 到 `4`；桌面端默认 `2`，移动端默认 `3`
+- `requireNativeScale` 必须为 `true`，表示执行器必须验证浏览器真实 DPR，而不是只接受配置值
 - `actions` 至少包含一个 `open` 和一个 `screenshot`
 - 文件中的截图路径必须是相对路径，不得包含 `..`
 - 操作 JSON 位于 `~/.component-validation/cases/<case-name>/<run-id>/`
@@ -60,10 +63,12 @@
 ### open
 
 ```json
-{"type": "open", "path": "/demo?componentMock=button-loading"}
+{"type": "open", "path": "/coupon/list?tab=unused&componentMock=coupon-card#content"}
 ```
 
 `path` 可使用站内绝对路径或完整 `http(s)` URL。
+
+`open.path` 必须来自用户目标页面 URL，并只追加或更新本次 `componentMock` 参数。原目标 URL 的 pathname、有效 query 和 hash 必须保留；不得擅自换成独立 demo/story 路由。
 
 ### waitFor
 
@@ -161,8 +166,11 @@
 ## 执行语义
 
 - 动作严格按数组顺序执行
+- 截图前读取 `window.devicePixelRatio`，必须与 `deviceScaleFactor` 一致；不一致时重新建立支持 DPR 模拟的浏览器上下文并重新打开页面
+- 每个 case 的初始视口截图必须执行 PNG 像素尺寸校验：非全页截图应等于 `viewport × deviceScaleFactor`，全页截图宽度应相等且高度不得小于该值
+- 禁止通过截图后插值放大冒充高清截图；若环境无法提供原生高 DPR，必须标记降级且不能声明高清验证通过
 - 任一动作失败即停止，保留已生成截图并写入报告
-- 实际打开成功后，将完整页面 URL 更新到 `~/.component-validation/page-urls.json`
+- 实际打开成功后，将未包含本次 `componentMock` 参数的用户目标页面 URL 更新到 `~/.component-validation/page-urls.json`
 - 每生成一张截图后执行全局裁剪，只保留最近 500 张截图
 - 每个交互动作后重新观察页面
 - 不允许通过 JSON 执行任意 JavaScript、shell、网络请求或文件读写

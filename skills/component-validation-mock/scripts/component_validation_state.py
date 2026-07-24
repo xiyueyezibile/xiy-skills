@@ -119,6 +119,7 @@ def command_prepare_case(args: argparse.Namespace) -> None:
         "runDir": str(run_dir),
         "screenshotsDir": str(screenshots_dir),
         "browserActions": str(run_dir / "browser-actions.json"),
+        "mockChanges": str(run_dir / "mock-changes.json"),
         "report": str(run_dir / "report.md"),
     }, ensure_ascii=False))
 
