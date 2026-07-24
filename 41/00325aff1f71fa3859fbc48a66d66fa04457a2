@@ -1,0 +1,23 @@
+skills/component-validation-mock/assets/browser-actions.example.json
+  s_d5c423e060730f::t_179247d1c53caf 1-56
+skills/component-validation-mock/scripts/validate_browser_actions.py
+  s_d5c423e060730f::t_f9a0f9e53cbf69 1-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4100325aff1f71fa3859fbc48a66d66fa04457a2",
+  "prompts": {},
+  "sessions": {
+    "s_d5c423e060730f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9203-c9a9-73d3-bef2-6178a729c20f",
+        "model": "unknown"
+      },
+      "human_author": "潘麒麟 <panqilin.malis@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
