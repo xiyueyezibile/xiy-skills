@@ -51,8 +51,12 @@ npx skills add xiyueyezibile/xiy-skills@component-validation-mock -g -y
 功能特性：
 
 - 从用户 URL 反查真实页面入口，可复用已有 mock 数据和组件封装，但必须挂载回该页面
+- 高清模式默认使用 macOS 系统原生截图，双显示器先定位正确屏幕再无缩放裁切
+- 移动端高清截图复用用户预先准备的 Chrome DevTools 设备页面；页面或权限未准备时给出一次性准备提醒
+- 用户明确不需要高清时回退普通浏览器截图，并清楚标记为非系统高清截图
 - 用户给出的 URL 仅用于锁定目标页面，不假设该地址原本就能看到组件
 - 在目标 URL 对应的真实页面入口增加 dev-only Mock，保留原 path/query/hash，并追加 `componentMock` 后打开验证
+- Mock 数据优先复用真实调用点、类型、fixture/story 和业务文案，合理填充组件内的文本、图片、金额、状态与列表，避免只求渲染成功而影响观感
 - 在用户目录记录 Mock 改动文件、位置、锚点、前后片段和哈希；取消 Mock 时先与当前源码及 Git diff 对比，再做最小撤销
 - 将用户目标页面 URL 持久记录到 `~/.component-validation/page-urls.json`，不会用临时 Mock URL 覆盖
 - 禁止擅自切换到独立 story/demo，用同一目标页面首屏截图

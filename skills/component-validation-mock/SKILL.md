@@ -1,7 +1,7 @@
 ---
 name: component-validation-mock
-description: 为前端组件创建可复现的页面首屏 Mock 验证环境，把用户提供的 URL 视为目标页面而非组件现成展示页，先在该页面对应入口注入 dev-only Mock，确保同一页面 URL 的首屏直接显示组件，再完成桌面端或移动端截图及简单交互验证。当用户要求“组件 mock”“把组件放到首屏看效果”“打开页面截图验证”“移动端调试截图”“点击/输入后截图”“为组件做视觉验收”时，务必使用此 skill。
-compatibility: 需要可编辑的前端仓库、可运行的本地开发服务，以及 Browser 或 Chrome 浏览器控制能力。
+description: 为前端组件创建可复现的页面首屏 Mock 验证环境，把用户提供的 URL 视为目标页面而非组件现成展示页，先在该页面对应入口注入 dev-only Mock，确保同一页面 URL 的首屏直接显示组件，再完成桌面端或移动端截图及简单交互验证。高清截图默认使用 macOS 系统原生截图；移动端复用用户预先准备的 Chrome DevTools 设备页面，缺少页面或权限时明确提醒；用户明确不需要高清时回退浏览器截图。当用户要求“组件 mock”“把组件放到首屏看效果”“打开页面截图验证”“高清截图”“移动端调试截图”“点击/输入后截图”“为组件做视觉验收”时，务必使用此 skill。
+compatibility: 需要可编辑的前端仓库、可运行的本地开发服务、Browser 或 Chrome 浏览器控制能力；高清模式需要 macOS screencapture 与屏幕录制权限，移动端高清模式还需要用户预先准备 Chrome DevTools 设备页面。
 ---
 
 # Component Validation Mock
@@ -32,6 +32,7 @@ compatibility: 需要可编辑的前端仓库、可运行的本地开发服务�
 - 目标页面路由和所属应用/package
 - 组件必需 props、上下文 Provider、接口数据
 - 桌面端或移动端；移动端未给设备时默认 `390x844`
+- 是否明确不需要高清；未说明时默认按高清模式处理
 - 要执行的简单交互和每个截图时机
 - 本地服务启动命令、端口、鉴权前置条件
 
@@ -110,6 +111,10 @@ Mock 容器应：
 - 对异步内容提供稳定的就绪标记，例如 `data-component-validation-ready`
 - 不在生产构建中暴露验证入口
 
+Mock 数据必须让组件内部内容达到可用于视觉验收的完整度，而不只是满足类型并成功渲染。读取并遵循 [Mock 数据质量规则](references/mock-data-quality.md)：优先从真实调用点、类型定义、仓库 fixture/story 和页面文案中还原字段语义；标题、图片、金额、状态、标签、列表、时间等可见内容都要合理填充，字段之间保持业务一致。不要使用 `test`、`foo`、重复数字、无意义 Lorem、失效图片或大量空值敷衍内容，除非本 case 明确验证的就是空态或异常态。
+
+截图前同时检查数据和布局：可见字段是否齐全、文本长度是否具有代表性、图片是否成功加载、列表密度是否合理、金额与单位是否匹配、状态与可用操作是否一致，以及是否因劣质 Mock 出现非预期空白、塌陷、截断或占位符。组件能显示但内部观感失真时，继续完善 Mock，不能判定视觉验证通过。
+
 完成每个 Mock 代码改动后，立即按 [Mock 改动清单协议](references/mock-changes-schema.md) 记录到 `<runDir>/mock-changes.json`。每项至少包含仓库相对文件路径、创建或修改类型、记录时行号、稳定 symbol/锚点、改动摘要、改动前后片段和文件 SHA-256。行号只用于帮助导航，锚点和片段用于抵抗后续代码漂移；不得把清单当成可信回滚脚本。
 
 完成代码改动后生成验证 URL：
@@ -163,7 +168,7 @@ python3 <skill-dir>/scripts/validate_mock_changes.py \
 
 移动端 case 必须设置 `device.kind` 为 `mobile`，并提供 viewport。打开页面后先应用设备模拟，再刷新或重新打开目标 URL，确保响应式逻辑按移动端初始化。
 
-所有 case 都必须设置 `deviceScaleFactor` 和 `requireNativeScale: true`。桌面端默认 DPR `2`，移动端默认 DPR `3`；仅在设备或浏览器明确受限时才可在 `2` 到 `4` 范围内调整，不能使用 `1x` 产物冒充高清截图。
+高清 case 设置 `deviceScaleFactor` 和 `requireNativeScale: true`，作为期望设备规格与报告字段；最终高清证据以系统截图的真实 PNG 像素和显示器缩放为准。桌面端默认 DPR `2`，移动端默认 DPR `3`。用户明确不需要高清时可设置 `requireNativeScale: false` 并使用浏览器截图兜底，不得把兜底产物标成高清。
 
 运行前执行：
 
@@ -208,14 +213,19 @@ python3 skills/component-validation-mock/scripts/validate_browser_actions.py \
 
 ### 6. 截图验证
 
-截图前读取页面的 `window.devicePixelRatio`，必须与 JSON 中的 `deviceScaleFactor` 完全一致。JSON 只是意图，不是高清证据；若实际 DPR 仍为 `1`，应切换到支持设备缩放的 Chrome/CDP 浏览器上下文，重新应用 viewport、DPR、touch 和 user agent，再重新打开页面。禁止截图后插值放大，因为这不会增加组件文字和边缘细节。
+先读取并遵循 [系统高清截图流程](references/system-screenshot.md)。除非用户明确表示“不需要高清”“普通截图即可”，默认选择高清模式：使用 macOS `screencapture` 截取 Chrome 所在显示器，再从原始 PNG 无缩放裁出目标页面或组件区域。禁止截图后插值放大，因为这不会增加文字和边缘细节。
 
-桌面端按 JSON viewport 和 DPR 截图。移动端必须确认：
+移动端高清截图不要由 Agent 临时打开、关闭或反复切换 DevTools。优先复用用户已经准备好的 Chrome DevTools 设备页面；开始前确认页面处于设备模式、目标 viewport 正确且组件已重新初始化。若没有准备，提醒用户准备一个可长期复用的移动端 Chrome 页面并打开 DevTools 设备工具栏，然后等待用户确认。后续任务继续复用这个页面，避免每次重复打扰用户。
 
-- viewport 已切换为目标移动端尺寸
-- 页面重新初始化后再操作
-- 没有仅改变窗口宽度却遗漏移动端 user agent/touch 的问题；若浏览器不支持完整设备模拟，在报告中明确能力差异
-- 实际 DPR 与请求值一致，默认使用 DPR `3`
+高清模式所需的屏幕录制、辅助功能或自动化权限未开启时，说明具体权限名称和开启位置，等待用户开启后重试；不能静默改走低清路径。只有用户明确不需要高清时，才使用原来的浏览器 `screenshot` 动作兜底，并在报告中标记“普通浏览器截图，非系统高清截图”。
+
+移动端必须确认：
+
+- Chrome DevTools 设备工具栏已由用户预先准备并保持可复用
+- viewport 已切换为目标移动端尺寸，未给出时默认 `390x844`
+- 页面在设备模式下重新初始化后再操作
+- 没有仅改变窗口宽度却遗漏移动端 user agent/touch 的问题
+- 系统截图来自 Chrome 实际所在显示器，双显示器场景先定位正确 display
 
 至少截图：
 
@@ -224,7 +234,7 @@ python3 skills/component-validation-mock/scripts/validate_browser_actions.py \
 
 截图前等待动画和异步状态稳定；优先等待可观察条件，不使用随意的长时间 sleep。
 
-初始首屏截图生成后必须校验 PNG 实际像素。普通视口截图的像素宽高应严格等于 `CSS viewport × DPR`；全页截图宽度应相等，高度不得小于该乘积。例如 `390×844 @3x` 必须输出 `1170×2532`：
+浏览器截图兜底仍按原规则校验：普通视口截图的像素宽高应严格等于 `CSS viewport × DPR`；全页截图宽度应相等，高度不得小于该乘积。例如 `390×844 @3x` 应输出 `1170×2532`：
 
 ```bash
 python3 <skill-dir>/scripts/validate_screenshot_resolution.py \
@@ -232,7 +242,7 @@ python3 <skill-dir>/scripts/validate_screenshot_resolution.py \
   --css-width 390 --css-height 844 --dpr 3
 ```
 
-交互后的视口截图使用同一规则复验。若输出像素不符，不能声明高清截图验证通过。元素截图还应检查图片资源的 `naturalWidth/naturalHeight` 是否覆盖其渲染尺寸乘以 DPR；资源本身分辨率不足时，在报告中单独提示。
+系统高清截图使用 `file`、`sips` 或等效只读工具记录原始显示器截图和裁切后 PNG 的真实像素尺寸，并确认裁切过程没有缩放。浏览器截图兜底若输出像素不符，不能声明高清截图验证通过。元素内图片还应检查资源分辨率是否覆盖其实际渲染尺寸；资源本身分辨率不足时，在报告中单独提示。
 
 每生成一张截图后执行一次全局保留策略：
 
@@ -258,6 +268,7 @@ python3 <skill-dir>/scripts/component_validation_state.py prune-screenshots --li
 ## 验证结果
 
 - [通过/失败] 初始首屏展示：<证据>
+- [通过/失败] Mock 数据与视觉完整度：<数据来源、字段合理性、图片加载、列表密度和布局观察>
 - [通过/失败] <交互名称>：<证据>
 
 ## 产物
@@ -290,9 +301,13 @@ python3 <skill-dir>/scripts/component_validation_state.py prune-screenshots --li
 ## 失败处理
 
 - 缺组件 props：先从类型、调用点和 story 推断；仍不确定再询问
+- 缺少可信业务数据：从类型、真实调用点、fixture/story 和相邻页面文案构造脱敏的代表性数据；无法确认关键字段语义时明确说明，不用随意占位内容冒充通过
 - 页面需鉴权：使用现有已登录浏览器会话；不得读取 cookie、密码或会话存储
 - 接口不稳定：使用仓库已有 mock 层或确定性本地数据
 - 浏览器能力不可用：仍可生成并校验 JSON，但明确标记截图验证未执行
+- 系统截图权限未开启：提醒用户在“系统设置 → 隐私与安全性”中开启屏幕录制；需要自动置前或操作 Chrome 时同时提醒开启辅助功能/自动化，用户确认后重试
+- 移动端 Chrome 页面未准备：提醒用户创建并保留一个 Chrome DevTools 设备页面，选择目标设备或默认 `390x844`，完成后再继续；不要擅自反复打开调试工具
+- 用户明确不需要高清：使用浏览器截图兜底，保留正常视觉验证，但报告不得声称系统级高清或 Retina 原生截图
 - 历史 URL 已失效：实际探测路由或向用户确认，验证新 URL 后覆盖当前页面记录
 - 用户 URL 页面里原本没有组件：这是正常前提；先在对应页面入口建立 Mock，不能直接截图原页面或换到其他路由
 - 目标页面入口无法安全 Mock：报告失败原因并请求方向，不得用独立 demo/story 的截图代替
@@ -307,14 +322,17 @@ python3 <skill-dir>/scripts/component_validation_state.py prune-screenshots --li
 - URL 映射保存的是用户目标页面 URL，不是追加 Mock 参数后的验证 URL
 - 实际验证地址与目标页面 URL 使用同一 pathname，并保留原有有效 query/hash
 - Mock 已挂载在目标 URL 对应的页面入口，打开验证 URL 后无需额外交互、滚动或导航即可在首屏看到组件
+- Mock 数据覆盖组件主要可见字段，内容语义、字段关系、文本长度、图片和列表密度足以代表真实使用场景
+- 不存在由随意占位数据导致的非预期空白、破图、布局塌陷、异常截断或状态/操作矛盾
 - JSON 通过校验
 - Mock 改动清单通过校验，并覆盖本次所有 Mock 代码改动
 - 浏览器实际打开了正确 URL
 - 设备模式与 case 一致
 - 要求的交互已执行
 - 截图文件存在且内容可辨认
-- 请求 DPR 与 `window.devicePixelRatio` 一致，桌面端默认 `2`、移动端默认 `3`
-- 初始首屏 PNG 像素尺寸通过 `validate_screenshot_resolution.py` 校验
+- 高清模式使用系统原生截图，记录正确显示器、原始 PNG 尺寸、裁切尺寸且没有插值放大
+- 移动端高清模式复用了用户准备的 Chrome DevTools 设备页面，并记录 viewport/设备模式
+- 普通截图兜底仅在用户明确不需要高清时启用，并清楚标注非高清；若按 DPR 生成则通过 `validate_screenshot_resolution.py` 校验
 - 报告中的每项结论都有截图或页面观察证据
 - 报告、改动清单、操作 JSON 和截图均不在业务仓库内
 - 截图保留策略已执行，用户目录下截图总数不超过 500

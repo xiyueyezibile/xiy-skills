@@ -4,19 +4,25 @@
     {
       "id": 1,
       "prompt": "组件是 src/components/CouponCard.tsx，页面地址是 http://127.0.0.1:3000/coupon/list?tab=unused#content。这个页面现在没有 CouponCard，帮我放到首屏并截图。",
-      "expected_output": "把用户 URL 作为目标页面定位 /coupon/list 入口，在同一入口增加 dev-only Mock，保留 tab 和 hash，打开追加 componentMock 的验证 URL；不得改去独立 demo 页面。URL 映射保存原始目标页面地址，Mock 改动清单记录文件、位置、锚点、前后片段和哈希，其他产物保存到 ~/.component-validation。",
+      "expected_output": "把用户 URL 作为目标页面定位 /coupon/list 入口，在同一入口增加 dev-only Mock，保留 tab 和 hash，打开追加 componentMock 的验证 URL；不得改去独立 demo 页面。CouponCard 的券名、门槛、优惠金额、有效期和状态操作应来自类型/调用点/fixture 并保持语义一致，不能用 test/123 敷衍。用户没有声明放弃高清，因此默认用 macOS screencapture 截取 Chrome 所在显示器并无缩放裁切；权限缺失时提醒开启，不能静默降级。URL 映射保存原始目标页面地址，其他产物保存到 ~/.component-validation。",
       "files": []
     },
     {
       "id": 2,
       "prompt": "商品详情页 URL 是 https://localhost:5173/product/detail?id=123，当前页面默认不展示 MobileSkuPanel。请在这个页面首屏 mock 出来，切到 390x844，点“选择规格”，选中红色后截图。",
-      "expected_output": "在 /product/detail 对应页面入口创建移动端 Mock，验证 URL 保留 id=123 并追加 componentMock；组件初始即在首屏，使用默认 DPR 3，校验 window.devicePixelRatio 与 1170x2532 PNG 输出像素，交互前后截图，不能换到 story/demo。",
+      "expected_output": "在 /product/detail 对应页面入口创建移动端 Mock，验证 URL 保留 id=123 并追加 componentMock；商品图加载成功，规格名、价格、库存、选中状态和按钮能力彼此一致。高清模式先确认用户已准备可复用的 Chrome DevTools 设备页面并设为 390x844；未准备则提醒用户准备后等待确认，不由 Agent 反复打开调试工具。使用 macOS screencapture 定位 Chrome 所在显示器并无缩放裁切，记录原图和成品像素；屏幕录制或辅助功能权限缺失时明确提醒开启。交互前后截图，不能换到 story/demo。",
       "files": []
     },
     {
       "id": 3,
       "prompt": "之前给 SearchEmpty 做过首屏 mock，现在帮我取消掉。",
       "expected_output": "读取对应 case 的 mock-changes.json 辅助定位，逐文件对比当前源码、staged/unstaged Git diff、锚点、afterSnippet 和哈希；只对确认仍属于该次 Mock 的 hunk 做最小反向补丁，遇到用户后续改动则跳过冲突项并报告，不能整文件 restore。",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "把 UserBadge mock 到个人主页首屏看一下就行，我不需要高清图，普通截图即可。",
+      "expected_output": "在用户目标页面入口建立 dev-only Mock，并识别用户明确不需要高清；直接使用原有 Browser/Chrome screenshot 流程兜底，不要求准备系统屏幕录制权限或移动端 DevTools 页面。仍需验证组件可见、截图存在并在报告中标记为普通浏览器截图，不能声称 Retina 或系统级高清。",
       "files": []
     }
   ]
