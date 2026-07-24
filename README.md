@@ -40,6 +40,33 @@ npx skills add xiyueyezibile/xiy-skills@commit-message-generator -g -y
 - 支持多文件、多类型改动分析
 - 按优先级确定主type（feat > fix > refactor > ...）
 
+### component-validation-mock
+
+为前端组件创建可复现的页面首屏 Mock，并自动生成浏览器操作 JSON、打开页面、执行简单交互和截图验证
+
+```bash
+npx skills add xiyueyezibile/xiy-skills@component-validation-mock -g -y
+```
+
+功能特性：
+
+- 自动定位组件对应的真实页面和路由，优先复用仓库已有 demo、story 或 mock 机制
+- 将用户直接提供、配置/文档指出或浏览器验证通过的页面 URL 持久记录到 `~/.component-validation/page-urls.json`，避免后续猜错路径
+- 以 dev-only query 或验证路由把目标组件放到页面首屏，不污染生产入口
+- 生成可机器校验的 `browser-actions.json`
+- 支持桌面端以及移动端 viewport、触摸和 user agent 模拟
+- 支持点击、输入、按键、下拉选择、滚动等简单交互
+- 自动打开目标页面，并在初始状态和关键交互后截图
+- 操作 JSON、截图和验证报告统一保存到 `~/.component-validation/cases/`，不写入业务仓库
+- 按修改时间全局只保留最近 `500` 张截图
+- 内置 JSON 校验脚本，禁止任意脚本执行、危险截图路径和敏感会话数据
+
+使用示例：
+
+- “把 CouponCard 放到优惠券列表页首屏并截图”
+- “用 390x844 移动端验证 SkuPanel，点开规格后再截图”
+- “给空态组件做个 mock，输入关键词并按 Enter 后验证”
+
 ### skill-manager
 
 管理和推荐skills的skill，当用户询问该用什么skill时，列出可用的skills、推荐场景和推荐理由

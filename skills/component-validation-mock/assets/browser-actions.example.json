@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "caseName": "example-card-mobile",
+  "baseUrl": "http://127.0.0.1:3000",
+  "device": {
+    "kind": "mobile",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "deviceScaleFactor": 3,
+    "isTouch": true
+  },
+  "actions": [
+    {
+      "type": "open",
+      "path": "/demo?componentMock=example-card"
+    },
+    {
+      "type": "waitFor",
+      "locator": {
+        "by": "testId",
+        "value": "component-validation-ready"
+      },
+      "state": "visible",
+      "timeoutMs": 10000
+    },
+    {
+      "type": "screenshot",
+      "path": "screenshots/initial.png",
+      "fullPage": false
+    },
+    {
+      "type": "click",
+      "locator": {
+        "by": "role",
+        "value": "button",
+        "name": "展开详情"
+      }
+    },
+    {
+      "type": "waitFor",
+      "locator": {
+        "by": "testId",
+        "value": "detail-panel"
+      },
+      "state": "visible",
+      "timeoutMs": 5000
+    },
+    {
+      "type": "screenshot",
+      "path": "screenshots/expanded.png",
+      "fullPage": false
+    }
+  ]
+}
