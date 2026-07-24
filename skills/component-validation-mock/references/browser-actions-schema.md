@@ -7,6 +7,7 @@
   "version": 1,
   "caseName": "button-loading-mobile",
   "baseUrl": "http://127.0.0.1:3000",
+  "targetUrl": "http://127.0.0.1:3000/coupon/list?tab=unused#content",
   "device": {
     "kind": "mobile",
     "viewport": {
@@ -27,6 +28,7 @@
 - `version` 当前固定为 `1`
 - `caseName` 仅使用字母、数字、点、下划线和短横线
 - `baseUrl` 仅允许 `http://` 或 `https://`
+- `targetUrl` 必填，必须是用户给定或实际确认的目标页面完整 URL；实际 `open.path` 的 pathname、query、hash 必须与它一致
 - `device.kind` 为 `desktop` 或 `mobile`
 - viewport 宽高为正整数
 - `deviceScaleFactor` 必填且范围为 `2` 到 `4`；桌面端默认 `2`，移动端默认 `3`
@@ -63,12 +65,12 @@
 ### open
 
 ```json
-{"type": "open", "path": "/coupon/list?tab=unused&componentMock=coupon-card#content"}
+{"type": "open", "path": "/coupon/list?tab=unused#content"}
 ```
 
 `path` 可使用站内绝对路径或完整 `http(s)` URL。
 
-`open.path` 必须来自用户目标页面 URL，并只追加或更新本次 `componentMock` 参数。原目标 URL 的 pathname、有效 query 和 hash 必须保留；不得擅自换成独立 demo/story 路由。
+`open.path` 必须来自用户目标页面 URL。除非本地服务 origin 已经被确认不同，否则必须与目标页面 URL 完全一致；允许替换 origin 时，原目标 URL 的 pathname、query 和 hash 仍必须保持不变。不得为了触发 Mock 追加或更新 `componentMock`、`mockCase`、`debug` 等任何 query/hash，也不得擅自换成独立 demo/story 路由。
 
 ### waitFor
 
@@ -170,7 +172,7 @@
 - 每个 case 的初始视口截图必须执行 PNG 像素尺寸校验：非全页截图应等于 `viewport × deviceScaleFactor`，全页截图宽度应相等且高度不得小于该值
 - 禁止通过截图后插值放大冒充高清截图；若环境无法提供原生高 DPR，必须标记降级且不能声明高清验证通过
 - 任一动作失败即停止，保留已生成截图并写入报告
-- 实际打开成功后，将未包含本次 `componentMock` 参数的用户目标页面 URL 更新到 `~/.component-validation/page-urls.json`
+- 实际打开成功后，将用户目标页面 URL 更新到 `~/.component-validation/page-urls.json`；不得保存为验证而临时追加过参数的 URL
 - 每生成一张截图后执行全局裁剪，只保留最近 500 张截图
 - 每个交互动作后重新观察页面
 - 不允许通过 JSON 执行任意 JavaScript、shell、网络请求或文件读写

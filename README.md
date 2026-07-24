@@ -42,7 +42,7 @@ npx skills add xiyueyezibile/xiy-skills@commit-message-generator -g -y
 
 ### component-validation-mock
 
-为前端组件创建可复现的页面首屏 Mock，并自动生成浏览器操作 JSON、打开页面、执行简单交互和截图验证
+为前端组件在目标页面首屏创建可复现 Mock，并生成浏览器操作 JSON、执行简单交互和截图验证
 
 ```bash
 npx skills add xiyueyezibile/xiy-skills@component-validation-mock -g -y
@@ -56,14 +56,14 @@ npx skills add xiyueyezibile/xiy-skills@component-validation-mock -g -y
 - 移动端高清截图复用用户预先准备的 Chrome DevTools 设备页面；页面或权限未准备时给出一次性准备提醒
 - 用户明确不需要高清时回退普通浏览器截图，并清楚标记为非系统高清截图
 - 用户给出的 URL 仅用于锁定目标页面，不假设该地址原本就能看到组件
-- 在目标 URL 对应的真实页面入口增加 dev-only Mock，保留原 path/query/hash，并追加 `componentMock` 后打开验证
+- 在目标 URL 对应的真实页面入口增加临时 Mock，打开用户给定或实际确认的同一个 URL 验证，不为触发 Mock 追加 `componentMock` 等新参数
 - Mock 数据优先复用真实调用点、类型、fixture/story 和业务文案，合理填充组件内的文本、图片、金额、状态与列表，避免只求渲染成功而影响观感
 - 在用户目录记录 Mock 改动文件、位置、锚点、前后片段和哈希；取消 Mock 时先与当前源码及 Git diff 对比，再做最小撤销
-- 将用户目标页面 URL 持久记录到 `~/.component-validation/page-urls.json`，不会用临时 Mock URL 覆盖
+- 将用户目标页面 URL 持久记录到 `~/.component-validation/page-urls.json`，不会用临时验证参数覆盖
 - 禁止擅自切换到独立 story/demo，用同一目标页面首屏截图
 - 生成可机器校验的 `browser-actions.json`
 - 支持桌面端以及移动端 viewport、触摸和 user agent 模拟
-- 默认使用桌面端 DPR 2、移动端 DPR 3，并校验浏览器真实 DPR 与 PNG 输出像素，避免配置了高清但产物仍是 1x
+- 默认使用系统原生高清截图；普通浏览器截图兜底时才按 DPR 和 PNG 输出像素校验
 - 支持点击、输入、按键、下拉选择、滚动等简单交互
 - 自动打开目标页面，并在初始状态和关键交互后截图
 - Mock 改动清单、操作 JSON、截图和验证报告统一保存到 `~/.component-validation/cases/`，不写入业务仓库

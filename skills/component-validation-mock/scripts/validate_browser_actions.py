@@ -64,6 +64,17 @@ def validate_screenshot_path(value: Any, field: str) -> None:
         fail("{} 必须使用 .png 扩展名".format(field))
 
 
+def parse_open_url(value: str, field: str) -> Any:
+    if not isinstance(value, str) or not value.strip():
+        fail("{} 必须是非空字符串".format(field))
+    parsed = urlparse(value)
+    if value.startswith("/"):
+        return parsed
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return parsed
+    fail("{} 必须是站内绝对路径或 http(s) URL".format(field))
+
+
 def validate_action(action: Any, index: int) -> str:
     item = require_dict(action, "actions[{}]".format(index))
     action_type = item.get("type")
@@ -79,11 +90,7 @@ def validate_action(action: Any, index: int) -> str:
         validate_locator(item["locator"], "{}.locator".format(prefix))
 
     if action_type == "open":
-        path = item.get("path")
-        if not isinstance(path, str) or not path.strip():
-            fail("{}.path 必须是非空字符串".format(prefix))
-        if not (path.startswith("/") or urlparse(path).scheme in {"http", "https"}):
-            fail("{}.path 必须是站内绝对路径或 http(s) URL".format(prefix))
+        parse_open_url(item.get("path"), "{}.path".format(prefix))
     elif action_type == "waitFor":
         if item.get("state") not in {"visible", "hidden", "attached"}:
             fail("{}.state 不受支持".format(prefix))
@@ -112,6 +119,25 @@ def validate_action(action: Any, index: int) -> str:
     return action_type
 
 
+def validate_open_matches_target(action: Any, index: int, target_url: str) -> None:
+    item = require_dict(action, "actions[{}]".format(index))
+    if item.get("type") != "open":
+        return
+    prefix = "actions[{}]".format(index)
+    target = urlparse(target_url)
+    opened = parse_open_url(item.get("path"), "{}.path".format(prefix))
+    if (opened.path, opened.query, opened.fragment) != (
+        target.path,
+        target.query,
+        target.fragment,
+    ):
+        fail(
+            "{}.path 必须与 targetUrl 保持相同 pathname/query/hash；不得为了 Mock 追加、删除或重排 URL 参数".format(
+                prefix
+            )
+        )
+
+
 def validate(payload: Any) -> None:
     root = require_dict(payload, "root")
     if root.get("version") != 1:
@@ -127,6 +153,13 @@ def validate(payload: Any) -> None:
     parsed_url = urlparse(base_url)
     if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
         fail("baseUrl 必须是有效的 http(s) URL")
+
+    target_url = root.get("targetUrl")
+    if not isinstance(target_url, str):
+        fail("targetUrl 必须是用户目标页面完整 URL")
+    parsed_target_url = urlparse(target_url)
+    if parsed_target_url.scheme not in {"http", "https"} or not parsed_target_url.netloc:
+        fail("targetUrl 必须是有效的 http(s) URL")
 
     device = require_dict(root.get("device"), "device")
     if device.get("kind") not in {"desktop", "mobile"}:
@@ -153,6 +186,8 @@ def validate(payload: Any) -> None:
     action_types: List[str] = [
         validate_action(action, index) for index, action in enumerate(actions)
     ]
+    for index, action in enumerate(actions):
+        validate_open_matches_target(action, index, target_url)
     if "open" not in action_types:
         fail("actions 至少包含一个 open")
     if "screenshot" not in action_types:

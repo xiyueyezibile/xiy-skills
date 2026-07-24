@@ -15,11 +15,11 @@
         "startLine": 42,
         "endLine": 58,
         "symbol": "CouponListPage",
-        "anchor": "componentMock === 'coupon-card-mobile'"
+        "anchor": "return <CouponCardValidationMock />"
       },
-      "summary": "在优惠券列表页入口增加 dev-only CouponCard 首屏分支",
+      "summary": "在优惠券列表页入口增加临时 CouponCard 首屏 Mock 分支，打开原 URL 直接展示组件",
       "beforeSnippet": "return <CouponList />;",
-      "afterSnippet": "if (componentMock === 'coupon-card-mobile') { ... }",
+      "afterSnippet": "return <CouponCardValidationMock />;",
       "beforeFileSha256": "64位小写十六进制 SHA-256",
       "afterFileSha256": "64位小写十六进制 SHA-256"
     }

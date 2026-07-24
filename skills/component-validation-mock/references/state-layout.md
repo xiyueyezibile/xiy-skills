@@ -24,8 +24,8 @@
 - `repo` 使用 git 根目录名或用户明确给出的稳定仓库标识
 - `page` 使用路由名、页面名或稳定业务页面标识
 - 同一仓库和页面只保留最近一次确认 URL
-- `url` 保存用户目标页面 URL，不保存 Skill 为单次验证追加的 `componentMock` 参数
-- 浏览器实际验证 URL 应从该地址派生，保持 pathname 和已有 query/hash，只追加或更新 Mock 参数
+- `url` 保存用户目标页面 URL；浏览器实际验证也应打开该 URL
+- 除非本地服务 origin 已经被确认不同，否则浏览器实际验证 URL 必须与该地址完全一致；允许替换 origin 时，pathname、query 和 hash 仍必须保持不变，不得追加 Mock 参数
 - `source` 记录 URL 来源，不保存用户原文
 - 不保存凭证或敏感 query 参数
 

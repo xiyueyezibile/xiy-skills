@@ -2,6 +2,7 @@
   "version": 1,
   "caseName": "coupon-card-mobile",
   "baseUrl": "http://127.0.0.1:3000",
+  "targetUrl": "http://127.0.0.1:3000/coupon/list?tab=unused#content",
   "device": {
     "kind": "mobile",
     "viewport": {
@@ -15,7 +16,7 @@
   "actions": [
     {
       "type": "open",
-      "path": "/coupon/list?tab=unused&componentMock=coupon-card-mobile#content"
+      "path": "/coupon/list?tab=unused#content"
     },
     {
       "type": "waitFor",
