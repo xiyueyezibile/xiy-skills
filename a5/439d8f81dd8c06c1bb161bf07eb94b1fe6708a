@@ -1,0 +1,21 @@
+skills/component-validation-mock/references/mock-data-quality.md
+  s_d5c423e060730f::t_3d9088540dd9be 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a5439d8f81dd8c06c1bb161bf07eb94b1fe6708a",
+  "prompts": {},
+  "sessions": {
+    "s_d5c423e060730f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9203-c9a9-73d3-bef2-6178a729c20f",
+        "model": "unknown"
+      },
+      "human_author": "潘麒麟 <panqilin.malis@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
