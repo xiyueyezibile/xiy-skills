@@ -47,6 +47,7 @@ compatibility: 需要可编辑前端仓库、可运行本地服务、Browser 或
 - 组件文件、导出名、必需 props、Provider、接口数据
 - 目标页面 URL、路由、package 和本地服务命令
 - 桌面端或移动端；移动端未给设备时默认 `390x844`
+- 移动端若需截图，优先复用用户已经打开的 Chrome DevTools 设备页面或已处于设备模式的标签页；没有现成上下文时再提醒用户准备一个可长期复用的页面
 - 是否明确不需要高清；未说明即按高清模式
 - 需要执行的简单交互和截图时机
 - 鉴权、端内环境、接口稳定性等前置条件
@@ -178,9 +179,9 @@ python3 <skill-dir>/scripts/validate_browser_actions.py <runDir>/browser-actions
 
 移动端高清路径：
 
-- 复用用户预先准备的 Chrome DevTools 设备页面。
+- 优先复用用户已经打开的 Chrome DevTools 设备页面或已处于设备模式的标签页。
 - 开始前确认设备工具栏、viewport、user agent/touch 和页面重新初始化都正确。
-- 缺少页面时提醒用户准备一个可长期复用的设备页面；不要由 Agent 反复临时打开或关闭 DevTools。
+- 没有现成移动端上下文时，提醒用户准备一个可长期复用的设备页面；不要由 Agent 反复临时打开或关闭 DevTools。
 
 普通截图兜底：
 
@@ -228,7 +229,7 @@ python3 <skill-dir>/scripts/component_validation_state.py prune-screenshots --li
 - 接口不稳定：使用仓库已有 mock 层或确定性本地数据。
 - 浏览器能力不可用：仍可生成并校验 JSON，但标记截图验证未执行。
 - 系统截图权限未开：提醒到“系统设置 -> 隐私与安全性”开启屏幕录制；需要控制 Chrome 时同时提醒辅助功能/自动化。
-- 移动端 Chrome 页面未准备：提醒用户创建并保留 DevTools 设备页面，默认 `390x844`。
+- 移动端 Chrome 页面未准备：先检查是否已有已打开的设备模式页面；确认没有后，再提醒用户创建并保留 DevTools 设备页面，默认 `390x844`。
 - 历史 URL 失效：探测路由或向用户确认，验证新 URL 后覆盖记录。
 - 目标页面入口无法安全 Mock：报告原因并请求方向，不用独立 demo/story 截图代替。
 - 页面错误：保留证据，定位为 Mock、页面或环境问题，不修改业务逻辑掩盖。
