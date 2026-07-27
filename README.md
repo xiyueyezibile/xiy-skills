@@ -129,7 +129,7 @@ npx skills add xiyueyezibile/xiy-skills@reply-generator -g -y
 
 ### team-pitfalls
 
-团队踩坑收集器：面向非纯闲聊工程任务，在任务开始前按仓库领域级、全局领域级、仓库级、全局级加载已有知识，任务结束前复盘是否值得沉淀
+团队踩坑收集器：面向非纯闲聊工程任务，在任务开始前返回仓库、领域和通用知识导航入口，由 agent 先读索引简介再按需打开具体案例，任务结束前复盘是否值得沉淀
 
 ```bash
 npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
@@ -138,15 +138,16 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 功能特性：
 
 - 使用时固定包含“前置检查 + 后置复盘”两段动作
-- 提供 `begin_task.py` / `end_task.py` 两步生命周期门禁：前者按分层顺序返回知识摘要，后者只要求明确记录或跳过沉淀
-- 前置检查实际采用记录时自动累计使用次数，区分“问题再次出现”和“知识被复用”
-- 分层上下文优先：仓库领域级 `repos/<repo>/domains/<domain>/` → 全局领域级 `domains/<domain>/` → 仓库级 `repos/<repo>/` → 全局级 `pitfalls/`
+- 提供 `begin_task.py` / `end_task.py` 两步生命周期门禁：前者只校验 Wiki 并返回导航入口，后者记录沉淀、采用或跳过结果
+- 前置检查实际采用记录时由 agent 最小更新使用次数，区分“问题再次出现”和“知识被复用”
+- 分层阅读优先：仓库领域索引 `repos/<repo>/domains/<domain>/index.md` → 全局领域索引 `domains/<domain>/index.md` → 仓库索引 `repos/<repo>/index.md` → 全局通用坑位 `pitfalls/*.md`
 - 同一仓库可拆多个领域；业务跨仓库时还可维护全局领域级，用来反向发现其他仓库的同领域记录
 - 每个领域 `index.md` 都保留简短介绍，说明业务、页面/链路范围、典型术语或指标边界
 - 适合放进领域级的知识：某类业务、某个页面、页面簇、业务链路、端内入口、领域术语、领域指标或类似稳定范围
-- 不再使用 query 召回、字段打分、命中词证据或 Top-N 截断作为主流程
-- 每条记录返回 `ID + Kind + Title + Tags + File + 结论` 摘要，按层级顺序审阅和采用
-- 不重复输出 `SKILL.md`、`llms.txt` 或全量 `index.md`，分层读取发生在本地脚本内
+- `--domain` 可重复传入，适配一个任务同时命中业务领域、页面领域或链路领域的场景
+- 不再使用 query 召回、字段打分、命中词证据、Top-N 截断或脚本生成条目摘要作为主流程
+- 先读 repo/domain 索引简介，再决定是否打开 `glossary.md`、`corrections.md` 或 `pitfalls/*.md` 正文
+- 不重复输出 `SKILL.md`、`llms.txt` 或全量 `index.md`，脚本只返回稳定导航路径
 - 复杂 JSON 支持通过 `--json-file` 安全传入，兼容带空格路径与 UTF-8 BOM，并提供明确解析位置
 - 自动化产物统一归一化为 `artifacts/repos/<repo-slug>/<file-slug>` 相对 POSIX 路径
 - 采用外部 LLM Wiki root 管理踩坑记录，skill 包内不再保存知识库正文
@@ -164,6 +165,9 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 ```bash
 python3 skills/team-pitfalls/scripts/begin_task.py --task-id task-20260717 --repo fe-buyin --domain daren
 python3 skills/team-pitfalls/scripts/end_task.py --task-id task-20260717 --result skipped --reason "没有新的可迁移知识"
+
+# 如果本轮采用并更新了已有知识，结束时改用：
+python3 skills/team-pitfalls/scripts/end_task.py --task-id task-20260717 --result recorded --used-entry-id P-001
 ```
 
 固定目录：

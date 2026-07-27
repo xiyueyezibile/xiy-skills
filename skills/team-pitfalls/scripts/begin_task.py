@@ -1,6 +1,5 @@
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -9,49 +8,99 @@ from task_lifecycle import STATE_SCHEMA_VERSION, file_sha256, state_path, utc_no
 from upsert_pitfall import IndexRow, _ensure_wiki_scaffold, _parse_index_rows, _read_text, _resolve_wiki_root
 
 
-ENTRY_HEADER_RE = re.compile(r"^###\s+((?:P|G|C)-\d{3})\s*:")
-CONCLUSION_PREFIXES = ("- **一句话结论**:", "- **修正结论**:", "- **标准含义**:")
+def _page_info(wiki_root: Path, relative_path: str) -> dict[str, object]:
+    return {"file": relative_path, "exists": (wiki_root / relative_path).is_file()}
 
 
-def _conclusion(doc_text: str, entry_id: str) -> str:
-    active = False
-    for line in doc_text.splitlines():
-        header = ENTRY_HEADER_RE.match(line)
-        if header:
-            active = header.group(1) == entry_id
-            continue
-        if active:
-            for prefix in CONCLUSION_PREFIXES:
-                if line.startswith(prefix):
-                    return line[len(prefix):].strip()
+def _repo_domain_from_path(file_path: str, repo: str) -> str:
+    parts = file_path.split("/")
+    if len(parts) >= 5 and parts[0] == "repos" and parts[1] == repo and parts[2] == "domains":
+        return parts[3]
     return ""
 
 
-def _entry_summary(row: IndexRow, wiki_root: Path, page_cache: dict[str, str], scope: str) -> dict[str, str]:
-    if row.file_path not in page_cache:
-        page_cache[row.file_path] = _read_text(wiki_root / row.file_path)
-    doc_text = page_cache[row.file_path]
-    return {
-        "id": row.entry_id,
-        "kind": row.kind,
-        "title": row.title,
-        "tags": row.tags,
-        "scope": scope,
-        "file": row.file_path,
-        "conclusion": _conclusion(doc_text, row.entry_id),
-    }
+def _global_domain_from_path(file_path: str) -> str:
+    parts = file_path.split("/")
+    if len(parts) >= 3 and parts[0] == "domains":
+        return parts[1]
+    return ""
+
+
+def _repo_domain_names(wiki_root: Path, rows: list[IndexRow], repo: str) -> list[str]:
+    names = {_repo_domain_from_path(row.file_path, repo) for row in rows}
+    domain_root = wiki_root / "repos" / repo / "domains"
+    if domain_root.is_dir():
+        names.update(path.name for path in domain_root.iterdir() if path.is_dir())
+    names.discard("")
+    return sorted(names)
+
+
+def _global_domain_names(wiki_root: Path, rows: list[IndexRow]) -> list[str]:
+    names = {_global_domain_from_path(row.file_path) for row in rows}
+    domain_root = wiki_root / "domains"
+    if domain_root.is_dir():
+        names.update(path.name for path in domain_root.iterdir() if path.is_dir())
+    names.discard("")
+    return sorted(names)
+
+
+def _selected_domain_names(raw_domains: list[str]) -> list[str]:
+    domains: list[str] = []
+    for raw_domain in raw_domains:
+        value = (raw_domain or "").strip()
+        if not value:
+            continue
+        domain = safe_slug(value, "domain")
+        if domain not in domains:
+            domains.append(domain)
+    return domains
+
+
+def _repo_domain_navigation(wiki_root: Path, repo: str, domains: list[str]) -> list[dict[str, object]]:
+    return [
+        {
+            "domain": domain,
+            "index": _page_info(wiki_root, f"repos/{repo}/domains/{domain}/index.md"),
+            "glossary": _page_info(wiki_root, f"repos/{repo}/domains/{domain}/glossary.md"),
+            "corrections": _page_info(wiki_root, f"repos/{repo}/domains/{domain}/corrections.md"),
+        }
+        for domain in domains
+    ]
+
+
+def _global_domain_navigation(wiki_root: Path, domains: list[str]) -> list[dict[str, object]]:
+    return [
+        {
+            "domain": domain,
+            "index": _page_info(wiki_root, f"domains/{domain}/index.md"),
+            "glossary": _page_info(wiki_root, f"domains/{domain}/glossary.md"),
+            "corrections": _page_info(wiki_root, f"domains/{domain}/corrections.md"),
+        }
+        for domain in domains
+    ]
+
+
+def _common_pitfall_pages(wiki_root: Path) -> list[dict[str, object]]:
+    pitfall_root = wiki_root / "pitfalls"
+    if not pitfall_root.is_dir():
+        return []
+    return [
+        _page_info(wiki_root, f"pitfalls/{path.name}")
+        for path in sorted(pitfall_root.glob("*.md"))
+        if path.is_file()
+    ]
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="创建 team-pitfalls 分层前置检查状态并返回仓库领域/全局领域/仓库/全局摘要")
+    parser = argparse.ArgumentParser(description="创建 team-pitfalls 前置状态并返回 Wiki 导航入口")
     parser.add_argument("--task-id", required=True, help="本轮稳定任务 ID，不要包含敏感信息")
-    parser.add_argument("--query", help="兼容旧调用保留；分层查找不再使用 query 做召回")
-    parser.add_argument("--repo", help="当前仓库名，用于读取仓库级记录")
-    parser.add_argument("--domain", help="当前领域名；可单独用于读取全局领域级记录，配合 --repo 时优先读取仓库领域级记录")
+    parser.add_argument("--query", help="兼容旧调用保留；仅记录是否提供，不参与召回或过滤")
+    parser.add_argument("--repo", help="当前仓库名，用于返回仓库级导航入口")
+    parser.add_argument("--domain", action="append", default=[], help="当前领域名；可重复传入多个领域")
     parser.add_argument("--skill-root", help="team-pitfalls skill 根目录；默认从当前脚本反查")
     parser.add_argument("--artifact-root", default="artifacts/repos", help="对外产物相对根目录")
     parser.add_argument("--force", action="store_true", help="覆盖同 task-id 的未完成状态")
-    parser.add_argument("--verbose", action="store_true", help="输出完整预检状态，默认只输出紧凑摘要")
+    parser.add_argument("--verbose", action="store_true", help="输出完整前置状态，默认只输出紧凑导航")
     args = parser.parse_args()
 
     task_id = validate_task_id(args.task_id)
@@ -84,51 +133,13 @@ def main() -> int:
 
     raw_repo = (args.repo or "").strip()
     repo = safe_slug(raw_repo, "repo") if raw_repo else ""
-    raw_domain = (args.domain or "").strip()
-    domain = safe_slug(raw_domain, "domain") if raw_domain else ""
+    selected_domains = _selected_domain_names(args.domain)
     rows = _parse_index_rows(_read_text(index_path))
-    page_cache: dict[str, str] = {}
-    levels: list[dict[str, object]] = []
 
-    if repo and domain:
-        domain_prefix = f"repos/{repo}/domains/{domain}/"
-        domain_entries = [
-            _entry_summary(row, wiki_root, page_cache, "domain")
-            for row in rows
-            if row.file_path.startswith(domain_prefix)
-        ]
-        levels.append({"scope": "domain", "repo": repo, "domain": domain, "entry_count": len(domain_entries), "entries": domain_entries})
-
-    if domain:
-        global_domain_prefix = f"domains/{domain}/"
-        global_domain_entries = [
-            _entry_summary(row, wiki_root, page_cache, "global_domain")
-            for row in rows
-            if row.file_path.startswith(global_domain_prefix)
-        ]
-        levels.append({"scope": "global_domain", "domain": domain, "entry_count": len(global_domain_entries), "entries": global_domain_entries})
-
-    if repo:
-        repo_prefix = f"repos/{repo}/"
-        repo_entries = [
-            _entry_summary(row, wiki_root, page_cache, "repo")
-            for row in rows
-            if row.file_path.startswith(repo_prefix) and f"{repo_prefix}domains/" not in row.file_path
-        ]
-        levels.append({"scope": "repo", "repo": repo, "entry_count": len(repo_entries), "entries": repo_entries})
-
-    global_entries = [
-        _entry_summary(row, wiki_root, page_cache, "global")
-        for row in rows
-        if row.file_path.startswith("pitfalls/")
-    ]
-    levels.append({"scope": "global", "entry_count": len(global_entries), "entries": global_entries})
-
-    entry_ids = [
-        str(entry["id"])
-        for level in levels
-        for entry in level["entries"]  # type: ignore[index]
-    ]
+    repo_domains = _repo_domain_names(wiki_root, rows, repo) if repo else []
+    global_domains = _global_domain_names(wiki_root, rows)
+    selected_global_domains = selected_domains or global_domains
+    selected_repo_domains = selected_domains or repo_domains
 
     state: dict[str, object] = {
         "schema_version": STATE_SCHEMA_VERSION,
@@ -137,21 +148,42 @@ def main() -> int:
         "started_at": utc_now(),
         "wiki_root": str(wiki_root),
         "repo": repo,
-        "domain": domain,
+        "domain": selected_domains[0] if selected_domains else "",
+        "domains": selected_domains,
         "query": query,
-        "entry_ids": entry_ids,
+        "entry_ids": [],
         "skill_sha256": file_sha256(skill_path),
         "index_sha256": file_sha256(index_path),
         "artifact_repo_root": artifact_reference("task.json", repo or "repo", args.artifact_root).rsplit("/", 1)[0],
     }
     write_state(path, state)
 
+    navigation: dict[str, object] = {
+        "root": {
+            "llms": _page_info(wiki_root, "llms.txt"),
+            "index": _page_info(wiki_root, "index.md"),
+            "schema": _page_info(wiki_root, "SCHEMA.md"),
+        },
+        "global_domains_index": _page_info(wiki_root, "domains/index.md"),
+        "global_domains": _global_domain_navigation(wiki_root, selected_global_domains),
+        "common_pitfalls": _common_pitfall_pages(wiki_root),
+    }
+    if repo:
+        navigation["repo"] = {
+            "repo": repo,
+            "index": _page_info(wiki_root, f"repos/{repo}/index.md"),
+            "glossary": _page_info(wiki_root, f"repos/{repo}/glossary.md"),
+            "corrections": _page_info(wiki_root, f"repos/{repo}/corrections.md"),
+            "domains": _repo_domain_navigation(wiki_root, repo, selected_repo_domains),
+        }
+
     output: dict[str, object] = {
         "task_id": task_id,
-        "lookup_order": [str(level["scope"]) for level in levels],
-        "entry_count": len(entry_ids),
-        "levels": levels,
-        "next": "read levels in order: repo domain -> global domain -> repo -> global; apply relevant records; finish with end_task.py",
+        "mode": "navigation",
+        "repo": repo,
+        "domains": selected_domains,
+        "navigation": navigation,
+        "next": "read index pages first; open glossary/corrections/pitfall pages only when their introduction or links are relevant; finish with end_task.py",
     }
     if args.verbose:
         output["state"] = state
