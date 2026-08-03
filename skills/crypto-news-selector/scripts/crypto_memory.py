@@ -144,13 +144,31 @@ def close_trade(args: argparse.Namespace) -> None:
     if already_closed:
         raise ValueError("Trade is already closed")
     entry = float(opened["entry"])
-    quantity = float(opened["quantity"])
+    quantity = float(opened["quantity"]) + sum(float(event.get("quantityDelta", 0)) for event in events if event.get("type") == "ADJUST" and event.get("tradeId") == args.trade_id)
+    if quantity <= 0:
+        raise ValueError("Trade has no remaining quantity to close")
     direction = 1.0 if opened["side"] == "LONG" else -1.0
     gross_pnl = (args.exit - entry) * quantity * direction
     net_pnl = gross_pnl - args.fees
     event: Dict[str, object] = {"type": "CLOSE", "tradeId": args.trade_id, "timestamp": now_iso(), "exit": args.exit, "fees": args.fees, "grossPnl": round(gross_pnl, 8), "netPnl": round(net_pnl, 8), "note": args.note}
     append_event(event)
     print(json.dumps({"status": "closed", "tradeId": args.trade_id, "netPnl": round(net_pnl, 8), "reviewRequired": str(WIKI / "reviews" / (args.trade_id + ".md"))}, ensure_ascii=False))
+
+
+def adjust_trade(args: argparse.Namespace) -> None:
+    events = read_events()
+    opened = next((event for event in events if event.get("type") == "OPEN" and event.get("tradeId") == args.trade_id), None)
+    if opened is None:
+        raise ValueError("Trade ID not found")
+    if any(event.get("type") == "CLOSE" and event.get("tradeId") == args.trade_id for event in events):
+        raise ValueError("Trade is already closed")
+    current_quantity = float(opened["quantity"]) + sum(float(event.get("quantityDelta", 0)) for event in events if event.get("type") == "ADJUST" and event.get("tradeId") == args.trade_id)
+    remaining_quantity = current_quantity + args.quantity_delta
+    if remaining_quantity <= 0:
+        raise ValueError("Use close for a full exit; adjust must leave a positive quantity")
+    event: Dict[str, object] = {"type": "ADJUST", "tradeId": args.trade_id, "timestamp": now_iso(), "quantityDelta": args.quantity_delta, "price": args.price, "fees": args.fees, "remainingQuantity": remaining_quantity, "note": args.note}
+    append_event(event)
+    print(json.dumps({"status": "adjusted", "tradeId": args.trade_id, "remainingQuantity": remaining_quantity}, ensure_ascii=False))
 
 
 def show_context() -> None:
@@ -195,6 +213,12 @@ def parser() -> argparse.ArgumentParser:
     close_parser.add_argument("--exit", type=positive_number, required=True)
     close_parser.add_argument("--fees", type=non_negative_number, default=0.0)
     close_parser.add_argument("--note", default="")
+    adjust_parser = commands.add_parser("adjust")
+    adjust_parser.add_argument("--trade-id", required=True)
+    adjust_parser.add_argument("--quantity-delta", type=float, required=True, help="Positive for adding, negative for partial closing")
+    adjust_parser.add_argument("--price", type=positive_number, required=True)
+    adjust_parser.add_argument("--fees", type=non_negative_number, default=0.0)
+    adjust_parser.add_argument("--note", default="")
     return result
 
 
@@ -205,6 +229,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         elif args.command == "configure-binance": configure_binance()
         elif args.command == "context": show_context()
         elif args.command == "open": open_trade(args)
+        elif args.command == "adjust": adjust_trade(args)
         else: close_trade(args)
         return 0
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as error:

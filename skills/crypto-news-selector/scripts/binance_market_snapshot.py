@@ -17,7 +17,7 @@ BASE_URLS = (
     "https://fapi1.binance.com",
     "https://fapi2.binance.com",
 )
-INTERVALS = ("4h", "1h", "15m")
+INTERVALS = ("1d", "4h", "1h", "15m")
 EXCLUDED_BASE_ASSETS = {"USDC", "FDUSD", "TUSD", "USDP", "DAI", "USDE", "BUSD"}
 
 
