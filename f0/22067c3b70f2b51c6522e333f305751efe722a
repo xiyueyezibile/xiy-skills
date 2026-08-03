@@ -1,0 +1,33 @@
+README.md
+  s_8474ddec641094::t_a90db833710100 45,53-54,69-72,76,86,88-89,92
+skills/crypto-news-selector/SKILL.md
+  s_8474ddec641094::t_9c35d859826f82 3,12,14-16,18-51,71-83,100-105,108,116,122,127-128,130-132,139,165,169,190-191,202-203,206,270,275,281-282,309-310,324-325,329,339,353-355,360,368
+skills/crypto-news-selector/references/llm-wiki.md
+  s_8474ddec641094::t_889d84cbc5dabc 25-29,33
+skills/crypto-news-selector/scripts/binance_confirmed_trade.py
+  s_8474ddec641094::t_786d59de577637 1-493
+skills/crypto-news-selector/scripts/binance_market_snapshot.py
+  s_8474ddec641094::t_b74a04033dedaf 20
+skills/crypto-news-selector/scripts/binance_private_snapshot.py
+  s_8474ddec641094::t_0e281e73f91b72 13,17,34-36,44-114,126-129
+skills/crypto-news-selector/scripts/crypto_memory.py
+  s_8474ddec641094::t_1cace589cc2ff1 147-149,158-173,216-221,232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f022067c3b70f2b51c6522e333f305751efe722a",
+  "prompts": {},
+  "sessions": {
+    "s_8474ddec641094": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb6cb-5ce2-72e0-8a37-c65b7c964acd",
+        "model": "unknown"
+      },
+      "human_author": "潘麒麟 <panqilin.malis@bytedance.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
