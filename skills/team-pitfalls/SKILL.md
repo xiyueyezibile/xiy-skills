@@ -31,7 +31,7 @@ python3 skills/team-pitfalls/scripts/begin_task.py \
 - 如果知识属于某类业务、某个页面、某条业务链路或类似稳定范围，优先传一个或多个 `--domain`；不确定时先看 repo/domain 索引列表，再决定是否进入具体领域。
 - 仓库领域级和全局领域级都相关时，优先采用仓库领域级；全局领域级可用于反向发现其他仓库同领域记录。
 - 仓库级和全局级冲突时，优先采用仓库级。
-- 实际采用后，由 agent 最小更新正文条目的 `使用次数`；只浏览未采用不计数。
+- 实际采用后，调用 `record_pitfall_usage.py` 最小更新正文条目的 `使用次数`；只浏览未采用不计数。
 - 不向用户复述完整预检过程，除非命中内容会改变方案或形成风险提示。
 
 ### 2. 后置复盘
@@ -40,10 +40,12 @@ python3 skills/team-pitfalls/scripts/begin_task.py \
 
 知识按 `--repo` 和 `--domain` 隔离判断是否已有：其他仓库或其他领域已有相同或相近记录，只能作为参考，不能当作当前仓库/领域“现有记录已覆盖”的理由。若本轮问题会在当前仓库领域复发，且当前仓库领域没有等价 `G-*`/`C-*`，必须优先写入 `repos/<repo-name>/domains/<domain-name>/glossary.md` 或 `repos/<repo-name>/domains/<domain-name>/corrections.md`。若该业务领域跨仓库复用，另写或更新 `domains/<domain-name>/glossary.md` 或 `domains/<domain-name>/corrections.md`。无法归属具体领域时才写入仓库级。
 
-- 新增、更新、删除知识条目，或累计 `使用次数` 时，默认**不要**调用 `upsert_pitfall.py`、`delete_pitfall.py` 或 `record_pitfall_usage.py`。
-- 先读取 [knowledge-authoring.md](references/knowledge-authoring.md) 和 [manual-edit-template.md](references/manual-edit-template.md)，由 agent 直接编辑 Wiki Markdown 与相关索引。
+- 新增或更新知识条目时，默认调用 `upsert_pitfall.py`，用 `--json-file` 传入结构化 payload；脚本可执行时不要让 agent 手写正文块和索引。
+- 删除知识条目时，默认调用 `delete_pitfall.py`；累计 `使用次数` 时，默认调用 `record_pitfall_usage.py`。
+- 先读取 [knowledge-authoring.md](references/knowledge-authoring.md) 和 [manual-edit-template.md](references/manual-edit-template.md)，按模板生成脚本 payload，再由脚本写 Wiki Markdown 与相关索引。
+- 如果脚本被沙箱、权限或工具策略拦截，降级为 agent 按 [manual-edit-template.md](references/manual-edit-template.md) 自然写入 Markdown 与索引；降级时必须明确写入失败原因，并保持正文页、`index.md`、`llms.txt` 和相关 repo/domain index 一致。
 - 写入完成后，再运行 `end_task.py` 记录 `recorded`；没有新增知识时照常运行 `end_task.py --result skipped`。
-- `upsert_pitfall.py` / `delete_pitfall.py` / `record_pitfall_usage.py` 仅保留给维护者做离线批处理、迁移或调试，不是常规工程任务路径。
+- 只有脚本被拦截、脚本缺少表达能力、需要修复损坏 Markdown，或维护者明确要求手工排障时，才直接编辑 Wiki Markdown。
 
 没有新知识：
 
@@ -74,6 +76,54 @@ python3 skills/team-pitfalls/scripts/end_task.py \
 
 最终答复只需简短说明“已复盘，记录/不记录”，不要输出生命周期状态 JSON。
 
+### 脚本写入示例
+
+新增仓库领域级纠错：
+
+```bash
+python3 skills/team-pitfalls/scripts/upsert_pitfall.py \
+  --repo <repo-name> \
+  --domain <domain-name> \
+  --kind corrections \
+  --json-file <payload.json>
+```
+
+新增通用坑位：
+
+```bash
+python3 skills/team-pitfalls/scripts/upsert_pitfall.py \
+  --type docs \
+  --title "<标题>" \
+  --tags "<标签1, 标签2>" \
+  --conclusion "当……时，应先……，否则……" \
+  --reason "<原因>" \
+  --wrong "<反例>" \
+  --right "<正例>" \
+  --min-example "<原案例抽象>" \
+  --min-example "<跨场景迁移例>" \
+  --scope-ok "<适用范围>" \
+  --scope-no "<不适用范围>"
+```
+
+记录已采用条目：
+
+```bash
+python3 skills/team-pitfalls/scripts/record_pitfall_usage.py --id P-001
+```
+
+补强已有条目正文时，优先用脚本重写：
+
+```bash
+python3 skills/team-pitfalls/scripts/upsert_pitfall.py \
+  --repo <repo-name> \
+  --domain <domain-name> \
+  --kind corrections \
+  --replace-existing \
+  --json-file <payload.json>
+```
+
+如果上面的脚本调用被沙箱或权限拦截，按模板降级为 agent 自然写入。
+
 ## 何时加载详细规范
 
 仅在以下情况读取 [knowledge-authoring.md](references/knowledge-authoring.md)；新增、更新、删除知识时同时读取 [manual-edit-template.md](references/manual-edit-template.md)：
@@ -95,4 +145,4 @@ python3 skills/team-pitfalls/scripts/end_task.py \
 - 不记录账号、token、cookie、用户正文或其他敏感信息。
 - `llms.txt` 只做精选入口和读取顺序，不当 sitemap；基础结构包含 `SCHEMA.md`、`index.md`、`llms.txt`、`domains/`、`repos/` 和 `pitfalls/`。
 - 脚本必须保留导航门禁职责；不能重新用 query 召回、分数排序、Top-N 截断或脚本生成条目摘要替代 agent 先读索引简介、再按需打开正文的流程。
-- 常规任务中的新增、更新、删除知识，以及 `使用次数` 的累计，必须由 agent 直接编辑 Markdown 页面和索引，不把 `upsert_pitfall.py` / `delete_pitfall.py` / `record_pitfall_usage.py` 当作默认执行路径。
+- 常规任务中的新增、更新、删除知识，以及 `使用次数` 的累计，必须优先通过 `upsert_pitfall.py` / `delete_pitfall.py` / `record_pitfall_usage.py` 执行；只有脚本被沙箱、权限或工具策略拦截，或脚本能力确实不足时，才降级为手写 Markdown。

@@ -320,7 +320,7 @@ def _refresh_repo_index(wiki_root: Path, repo: str, rows: list[IndexRow]) -> Non
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="维护/批处理用途：删除 team-pitfalls LLM Wiki 条目")
+    parser = argparse.ArgumentParser(description="默认写入链路：删除 team-pitfalls LLM Wiki 条目，并刷新相关索引")
     target_group = parser.add_mutually_exclusive_group(required=True)
     target_group.add_argument("--id", help="要删除的条目 ID，例如 P-001 / G-001 / C-001")
     target_group.add_argument("--title", help="要删除的条目标题")

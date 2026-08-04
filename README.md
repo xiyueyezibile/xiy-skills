@@ -222,7 +222,7 @@ npx skills add xiyueyezibile/xiy-skills@reply-generator -g -y
 
 ### team-pitfalls
 
-团队踩坑收集器：面向非纯闲聊工程任务，在任务开始前返回仓库、领域和通用知识导航入口，由 agent 先读索引简介再按需打开具体案例，任务结束前复盘是否值得沉淀
+团队踩坑收集器：面向非纯闲聊工程任务，在任务开始前返回仓库、领域和通用知识导航入口，由 agent 先读索引简介再按需打开具体案例，任务结束前复盘是否值得沉淀；知识写入默认交给脚本完成，正常情况下避免 agent 手写 Markdown 和索引
 
 ```bash
 npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
@@ -232,7 +232,9 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 
 - 使用时固定包含“前置检查 + 后置复盘”两段动作
 - 提供 `begin_task.py` / `end_task.py` 两步生命周期门禁：前者只校验 Wiki 并返回导航入口，后者记录沉淀、采用或跳过结果
-- 前置检查实际采用记录时由 agent 最小更新使用次数，区分“问题再次出现”和“知识被复用”
+- 默认通过 `upsert_pitfall.py` / `delete_pitfall.py` / `record_pitfall_usage.py` 写入、删除和累计使用次数，脚本自动刷新正文页、`index.md`、`llms.txt` 和相关 repo/domain index；若脚本被沙箱、权限或工具策略拦截，则降级为 agent 按模板自然写入
+- `upsert_pitfall.py` 命中已有条目时默认只累计使用次数；需要补强正文时显式传 `--replace-existing`
+- 前置检查实际采用记录时调用 `record_pitfall_usage.py` 最小更新使用次数，区分“问题再次出现”和“知识被复用”
 - 分层阅读优先：仓库领域索引 `repos/<repo>/domains/<domain>/index.md` → 全局领域索引 `domains/<domain>/index.md` → 仓库索引 `repos/<repo>/index.md` → 全局通用坑位 `pitfalls/*.md`
 - 同一仓库可拆多个领域；业务跨仓库时还可维护全局领域级，用来反向发现其他仓库的同领域记录
 - 每个领域 `index.md` 都保留简短介绍，说明业务、页面/链路范围、典型术语或指标边界
@@ -241,7 +243,7 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 - 不再使用 query 召回、字段打分、命中词证据、Top-N 截断或脚本生成条目摘要作为主流程
 - 先读 repo/domain 索引简介，再决定是否打开 `glossary.md`、`corrections.md` 或 `pitfalls/*.md` 正文
 - 不重复输出 `SKILL.md`、`llms.txt` 或全量 `index.md`，脚本只返回稳定导航路径
-- 复杂 JSON 支持通过 `--json-file` 安全传入，兼容带空格路径与 UTF-8 BOM，并提供明确解析位置
+- 新增/更新知识支持通过 `--json-file` 安全传入结构化 payload，兼容带空格路径与 UTF-8 BOM，并提供明确解析位置
 - 自动化产物统一归一化为 `artifacts/repos/<repo-slug>/<file-slug>` 相对 POSIX 路径
 - 采用外部 LLM Wiki root 管理踩坑记录，skill 包内不再保存知识库正文
 - 标准结构包含 `SCHEMA.md`、`llms.txt`、`index.md`、`domains/<domain-name>/`、`pitfalls/`、`repos/<repo-name>/` 和 `repos/<repo-name>/domains/<domain-name>/`

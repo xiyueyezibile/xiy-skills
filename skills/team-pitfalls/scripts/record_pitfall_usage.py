@@ -66,7 +66,7 @@ def _increment_usage(doc_text: str, entry_id: str, today: str) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="维护/批处理用途：记录 team-pitfalls 条目在前置检查中的实际使用；累计使用次数并清理旧统计字段")
+    parser = argparse.ArgumentParser(description="默认写入链路：记录 team-pitfalls 条目在前置检查中的实际使用；累计使用次数并清理旧统计字段")
     parser.add_argument("--id", action="append", required=True, dest="entry_ids", help="命中的条目 ID，可重复传入")
     parser.add_argument("--dry-run", action="store_true", help="仅预览变更，不写入文件")
     args = parser.parse_args()

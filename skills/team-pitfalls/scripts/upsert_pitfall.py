@@ -610,12 +610,50 @@ def _update_existing_entry_block(doc_text: str, entry_id: str) -> str:
     return "".join(lines[:start]) + "\n".join(updated) + "\n" + "".join(lines[end:])
 
 
-def _format_pitfall(entry_id: str, entry: PitfallEntry) -> str:
+def _current_usage_count(doc_text: str, entry_id: str) -> int:
+    lines = doc_text.splitlines()
+    start: Optional[int] = None
+    for index, line in enumerate(lines):
+        if line.startswith(f"### {entry_id}:"):
+            start = index
+            break
+    if start is None:
+        return 0
+
+    for line in lines[start + 1:]:
+        if ENTRY_HEADER_RE.match(line.strip()):
+            return 0
+        if line.startswith("- **使用次数**:"):
+            match = re.search(r"(\d+)", line)
+            return int(match.group(1)) if match else 0
+    return 0
+
+
+def _replace_existing_entry_block(doc_text: str, entry_id: str, block: str) -> str:
+    lines = doc_text.splitlines(keepends=True)
+    start: Optional[int] = None
+    for index, line in enumerate(lines):
+        if line.startswith(f"### {entry_id}:"):
+            start = index
+            break
+    if start is None:
+        return doc_text
+
+    end = len(lines)
+    for index in range(start + 1, len(lines)):
+        if ENTRY_HEADER_RE.match(lines[index].strip()):
+            end = index
+            break
+
+    return "".join(lines[:start]) + block.rstrip() + "\n" + "".join(lines[end:])
+
+
+def _format_pitfall(entry_id: str, entry: PitfallEntry, usage_count: int = 0) -> str:
     return "\n".join(
         [
             f"### {entry_id}: {entry.title}",
             f"- **标签**: {entry.tags or 'TODO'}",
-            "- **使用次数**: 0",
+            f"- **使用次数**: {usage_count}",
             f"- **一句话结论**: {entry.conclusion or 'TODO'}",
             "- **容易写错的原因**:",
             *[f"  - {item}" for item in (entry.reasons or ["TODO"])],
@@ -632,12 +670,12 @@ def _format_pitfall(entry_id: str, entry: PitfallEntry) -> str:
     )
 
 
-def _format_glossary(entry_id: str, entry: GlossaryEntry) -> str:
+def _format_glossary(entry_id: str, entry: GlossaryEntry, usage_count: int = 0) -> str:
     return "\n".join(
         [
             f"### {entry_id}: {entry.title}",
             f"- **标签**: {entry.tags or 'TODO'}",
-            "- **使用次数**: 0",
+            f"- **使用次数**: {usage_count}",
             f"- **标准含义**: {entry.standard_meaning or 'TODO'}",
             "- **常见误解**:",
             *[f"  - {item}" for item in (entry.common_misunderstandings or ["TODO"])],
@@ -652,12 +690,12 @@ def _format_glossary(entry_id: str, entry: GlossaryEntry) -> str:
     )
 
 
-def _format_correction(entry_id: str, entry: CorrectionEntry) -> str:
+def _format_correction(entry_id: str, entry: CorrectionEntry, usage_count: int = 0) -> str:
     return "\n".join(
         [
             f"### {entry_id}: {entry.title}",
             f"- **标签**: {entry.tags or 'TODO'}",
-            "- **使用次数**: 0",
+            f"- **使用次数**: {usage_count}",
             f"- **错误理解**: {entry.wrong_understanding or 'TODO'}",
             f"- **用户修正**: {entry.user_correction or 'TODO'}",
             f"- **修正结论**: {entry.correction_conclusion or 'TODO'}",
@@ -715,8 +753,19 @@ def _handle_common(args: argparse.Namespace, payload_obj: Optional[dict[str, obj
     if existing is not None:
         target_path = wiki_root / existing.file_path
         doc_before = _read_text(target_path)
-        doc_after = _update_existing_entry_block(doc_before, existing.entry_id)
-        updated_row = IndexRow(existing.entry_id, "pitfall", entry.title, entry.tags or existing.tags, existing.file_path)
+        if args.replace_existing:
+            _validate_new_common_entry(entry)
+            usage_count = _current_usage_count(doc_before, existing.entry_id) + 1
+            doc_after = _replace_existing_entry_block(
+                doc_before,
+                existing.entry_id,
+                _format_pitfall(existing.entry_id, entry, usage_count),
+            )
+        else:
+            doc_after = _update_existing_entry_block(doc_before, existing.entry_id)
+        updated_title = entry.title if args.replace_existing else existing.title
+        updated_tags = (entry.tags or existing.tags) if args.replace_existing else existing.tags
+        updated_row = IndexRow(existing.entry_id, "pitfall", updated_title, updated_tags, existing.file_path)
         rows_after = _upsert_row(rows, updated_row)
     else:
         _validate_new_common_entry(entry)
@@ -777,8 +826,22 @@ def _handle_global_domain(args: argparse.Namespace, payload_obj: Optional[dict[s
     if existing is not None:
         target_path = wiki_root / existing.file_path
         doc_before = _read_text(target_path)
-        doc_after = _update_existing_entry_block(doc_before, existing.entry_id)
-        updated_row = IndexRow(existing.entry_id, kind, entry.title, entry.tags or existing.tags, existing.file_path)
+        if args.replace_existing:
+            if args.kind == "glossary":
+                _validate_new_glossary_entry(entry)
+            else:
+                _validate_new_correction_entry(entry)
+            usage_count = _current_usage_count(doc_before, existing.entry_id) + 1
+            doc_after = _replace_existing_entry_block(
+                doc_before,
+                existing.entry_id,
+                formatter(existing.entry_id, entry, usage_count),
+            )
+        else:
+            doc_after = _update_existing_entry_block(doc_before, existing.entry_id)
+        updated_title = entry.title if args.replace_existing else existing.title
+        updated_tags = (entry.tags or existing.tags) if args.replace_existing else existing.tags
+        updated_row = IndexRow(existing.entry_id, kind, updated_title, updated_tags, existing.file_path)
         rows_after = _upsert_row(rows, updated_row)
     else:
         if args.kind == "glossary":
@@ -849,8 +912,22 @@ def _handle_repo(args: argparse.Namespace, payload_obj: Optional[dict[str, objec
     if existing is not None:
         target_path = wiki_root / existing.file_path
         doc_before = _read_text(target_path)
-        doc_after = _update_existing_entry_block(doc_before, existing.entry_id)
-        updated_row = IndexRow(existing.entry_id, kind, entry.title, entry.tags or existing.tags, existing.file_path)
+        if args.replace_existing:
+            if args.kind == "glossary":
+                _validate_new_glossary_entry(entry)
+            else:
+                _validate_new_correction_entry(entry)
+            usage_count = _current_usage_count(doc_before, existing.entry_id) + 1
+            doc_after = _replace_existing_entry_block(
+                doc_before,
+                existing.entry_id,
+                formatter(existing.entry_id, entry, usage_count),
+            )
+        else:
+            doc_after = _update_existing_entry_block(doc_before, existing.entry_id)
+        updated_title = entry.title if args.replace_existing else existing.title
+        updated_tags = (entry.tags or existing.tags) if args.replace_existing else existing.tags
+        updated_row = IndexRow(existing.entry_id, kind, updated_title, updated_tags, existing.file_path)
         rows_after = _upsert_row(rows, updated_row)
     else:
         if args.kind == "glossary":
@@ -880,7 +957,7 @@ def _handle_repo(args: argparse.Namespace, payload_obj: Optional[dict[str, objec
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="维护/批处理用途：写入或更新 team-pitfalls LLM Wiki 条目")
+    parser = argparse.ArgumentParser(description="默认写入链路：写入或更新 team-pitfalls LLM Wiki 条目，并刷新相关索引")
     parser.add_argument("--type", choices=sorted(TYPE_TO_FILE.keys()))
     parser.add_argument("--file", help="wiki root 下的相对文件路径，例如 pitfalls/custom.md")
     parser.add_argument("--repo", help="仓库名，用于写入 repos/<repo-name>/")
@@ -888,6 +965,7 @@ def main() -> int:
     parser.add_argument("--global-domain", action="store_true", help="写入 domains/<domain>/ 跨仓库领域级")
     parser.add_argument("--kind", choices=("glossary", "corrections"))
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--replace-existing", action="store_true", help="命中已有条目时用当前 payload 重写正文；默认只累计使用次数")
     add_json_source_arguments(parser)
     parser.add_argument("--title")
     parser.add_argument("--tags", default="")
