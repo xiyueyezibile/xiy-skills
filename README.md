@@ -232,6 +232,7 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 
 - 使用时固定包含“前置检查 + 后置复盘”两段动作
 - 提供 `begin_task.py` / `end_task.py` 两步生命周期门禁：前者只校验 Wiki 并返回导航入口，后者记录沉淀、采用或跳过结果
+- 前置检查不是一次性免检；任务中途发现新领域、页面链路、外部工具、数据系统或文档规范，且原索引未覆盖时，保留同一 `task-id` 补跑 `begin_task.py` 并追加新的 `--domain`
 - 默认通过 `upsert_pitfall.py` / `delete_pitfall.py` / `record_pitfall_usage.py` 写入、删除和累计使用次数，脚本自动刷新正文页、`index.md`、`llms.txt` 和相关 repo/domain index；若脚本被沙箱、权限或工具策略拦截，则降级为 agent 按模板自然写入
 - `upsert_pitfall.py` 命中已有条目时默认只累计使用次数；需要补强正文时显式传 `--replace-existing`
 - 前置检查实际采用记录时调用 `record_pitfall_usage.py` 最小更新使用次数，区分“问题再次出现”和“知识被复用”
@@ -259,6 +260,7 @@ npx skills add xiyueyezibile/xiy-skills@team-pitfalls -g -y
 
 ```bash
 python3 skills/team-pitfalls/scripts/begin_task.py --task-id task-20260717 --repo fe-buyin --domain daren
+python3 skills/team-pitfalls/scripts/begin_task.py --task-id task-20260717 --repo fe-buyin --domain daren --domain slardar
 python3 skills/team-pitfalls/scripts/end_task.py --task-id task-20260717 --result skipped --reason "没有新的可迁移知识"
 
 # 如果本轮采用并更新了已有知识，结束时改用：
