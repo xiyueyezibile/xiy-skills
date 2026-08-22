@@ -40,6 +40,101 @@ npx skills add xiyueyezibile/xiy-skills@commit-message-generator -g -y
 - 支持多文件、多类型改动分析
 - 按优先级确定主type（feat > fix > refactor > ...）
 
+### crypto-news-selector-pack
+
+消息面选币多 Skill 协作包：把公开消息取证、Binance U 本位永续/股票代币行情结构、纯分析 HTML 报告、账户风控/本地流水、半自动确认式执行拆成多个可独立触发的 Skill，并保留 `crypto-news-selector` 作为完整单 Skill 和共享脚本运行时。适合需要“一键安装整套消息面选币能力”，或希望只单独安装新闻、行情、报告、风控、执行某一环节的场景。
+
+一键安装完整协作包：
+
+```bash
+npx skills add xiyueyezibile/xiy-skills -g -y --skill crypto-news-selector-pack crypto-news-analysis-report crypto-news-intel crypto-market-structure crypto-risk-ledger crypto-trade-executor crypto-news-selector
+```
+
+> 如果 `npx skills` 因 Node 版本过低报错，请先切换到 Node.js 22+ 后重试；不要直接复制他人机器的绝对路径。
+
+单独安装某一成员（只安装 `crypto-news-selector-pack` 表示只装总控说明；完整协作能力请用上方一键命令）：
+
+```bash
+npx skills add xiyueyezibile/xiy-skills@crypto-news-selector-pack -g -y
+npx skills add xiyueyezibile/xiy-skills@crypto-news-intel -g -y
+npx skills add xiyueyezibile/xiy-skills@crypto-market-structure -g -y
+npx skills add xiyueyezibile/xiy-skills@crypto-risk-ledger -g -y
+npx skills add xiyueyezibile/xiy-skills@crypto-trade-executor -g -y
+npx skills add xiyueyezibile/xiy-skills@crypto-news-selector -g -y
+```
+
+协作成员：
+
+- `crypto-news-selector-pack`：总控编排，先审计账户/流水，再协调消息、行情、风控和执行
+- `crypto-news-analysis-report`：只组合消息面与公共行情结构，输出不含账户、仓位和下单的逐币 HTML 深度报告；生成后必须在最终回复返回可直接点击打开的 `file://` 链接和 HTML 绝对路径
+- `crypto-news-intel`：公开消息、公告、监管、交易所事件和催化剂质量取证
+- `crypto-market-structure`：Binance 公共行情、1d/4h/1h/15m 结构、ATR 止损和入场触发
+- `crypto-risk-ledger`：`<项目根目录>/.crypto` 本地知识、Binance 私有只读快照、持仓流水对账、数量杠杆和组合风险
+- `crypto-trade-executor`：两阶段确认式执行；只在用户回复精确 `确认执行 TOKEN` 后处理单笔市价开仓和保护单
+- `crypto-news-selector`：原完整全流程 Skill，包含可复用脚本；也可继续单独使用
+
+功能特性：
+
+- 一条安装命令装完整协作包，也支持每个子 Skill 独立安装和独立触发
+- 默认只读，任何真实交易写接口都必须先有账户审计、订单草案和逐单精确确认
+- 回复消息面结论时必须逐条带发布时间、事件/生效时间、检索时间、距当前多久、时效性等级和有效窗口；时间不明的消息只能做线索，不能作为核心催化
+- 新闻、行情、风险、执行四类结论分层输出，便于复核某一环节是否缺证据
+- 默认报告交付：用户只说“用 skill 选币 / 帮我选币 / 看消息面机会 / 给观察清单”时，也必须先生成 HTML 报告，再在最终答复最前面给 `[打开 HTML 报告](file:///absolute/path/report.html)` 和 HTML 绝对路径；除非用户明确说不要文件/不要 HTML，不能只给聊天正文
+- 纯分析 HTML 报告生成后，最终答复直接给 `[打开 HTML 报告](file:///absolute/path/report.html)`，避免只给相对路径或口头说明；如果报告生成失败，必须说明失败命令和原因，并给完整 Markdown 版报告兜底
+- 用户声明已经开仓后进入 `position_followup` 持仓跟踪状态：能从只读账户唯一确认的写正式 ledger；缺少方向、入场价、数量时不伪造流水，而是在 `<项目根目录>/.crypto/position-watch/` 建立待补成交细节的跟踪清单，并持续复核相关新闻、未来催化落地/延期/取消、反向消息和关键失效位
+- 跟单、子账户、其他交易所或机器人仓位不一定出现在当前 Binance 主账户 API 快照中；用户未明确说平仓前，`position-watch` 中的 active 跟踪不能因快照无持仓而关闭。后续生成 HTML 报告时必须追加“已开仓催化落地跟踪”区块，展示上次开仓催化当前是否落地
+- 多币篮子、中长线波段和单币精选共享同一 `<项目根目录>/.crypto` 生命周期与复盘闭环
+- 子 Skill 未安装时，总控会按对应职责降级处理并标明缺少的自动化能力
+
+使用示例：
+
+- “用消息面选币协作包，先审计账户，再筛最近 72 小时的 5 个 U 本位候选”
+- “只分析不看仓位和开仓，结合消息面和行情结构整理一份 HTML 报告”
+- “只跑 news-intel，帮我查 OP 最近一个月有没有持续催化”
+- “只跑 market-structure，分析 BTC/ETH/SOL 现在有没有市价或近价限价结构”
+- “用 risk-ledger 按当前账户和已有持仓算这 3 个计划的数量和组合风险”
+- “把 PLAN-001 生成确认单，我确认后再执行”
+
+### crypto-news-analysis-report
+
+消息面选币纯分析报告 Skill：只组合 `crypto-news-intel` 和 `crypto-market-structure`，用于基于公开消息与 Binance U 本位公共行情做候选分析，并整理成可本地打开的 HTML 报告；不读取账户、不看仓位、不计算个人仓位、不生成订单草案、不调用任何交易写接口。
+
+```bash
+npx skills add xiyueyezibile/xiy-skills@crypto-news-analysis-report -g -y
+```
+
+如需连同消息/行情子 Skill 一起安装：
+
+```bash
+npx skills add xiyueyezibile/xiy-skills -g -y --skill crypto-news-analysis-report crypto-news-intel crypto-market-structure
+```
+
+功能特性：
+
+- 只使用公开新闻、公告和 Binance 公共行情，适合“只分析不交易”的场景
+- 新增新浪财经公开新闻源脚本 `scripts/sina_finance_news.py`，可按关键词从财经、股票、美股、港股、行业滚动新闻中补充中文消息
+- 强制每条消息写明发布时间、事件/生效时间、检索时间、距当前多久、时效性等级和有效窗口
+- 用 `crypto-news-intel` 判断催化剂质量与已定价风险，用 `crypto-market-structure` 判断 1d/4h/1h/15m 结构
+- 支持股票代币 / TradFi perpetual 专用流程：区分底层股票公司消息和 Binance 合约/交易工具消息，标注底层资产、股票市场、`TRADIFI_PERPETUAL` 合约类型、交易时段错位和消息传导路径
+- 可选接入 `finviz-screener` 作为美股候选池辅助，但主驱动仍是消息面；FinViz 的主题、财务或技术过滤结果不能替代新闻/公告催化
+- 风险标签必须按用户执行语义校准：`低` / `中低` / `中` 会被用户视为高概率开仓信号；若消息只是财报前预期、分析师观点、媒体解读、主题扩散，或还在“等突破/等回踩承接/可继续跟踪”阶段，`追进去风险` 至少写 `中高`，并把操作倾向写成 `等触发` 或 `只观察`
+- 支持 `pre_landing` 未落地催化埋伏模式：当用户要求“未落地之前的消息”“提前埋伏”“未来催化”时，只把未来 1–30 天有明确节点、尚未完全兑现且有复核时间的事件作为核心候选；已完成且没有下一阶段的新闻只作背景，不冒充埋伏机会
+- 支持把 B 站等二级内容作为方法论学习来源：只沉淀可验证的视频元数据、简介要点和选币方法，不把 UP 主观点、标题或评论区当作交易核心事实；所有候选仍需回到官方公告、交易所公告、链上数据、公司财报/IR 或监管文件验证
+- 候选只标注 `可继续跟踪`、`等触发`、`只观察`、`淘汰`，不输出账户相关数量和杠杆
+- 报告中的“落地”指利好/利空效应是否已经通过供需、基本面、价格结构、成交量/OI/资金费率或交易限制兑现，不是事件本身是否发生；事件排期或完成状态应单独写在 `事件/生效时间`、`未来催化节点`、`当前阶段`
+- 随包提供 `scripts/render_report.py`，把结构化分析结果渲染为 `.tmp/crypto-news-analysis-report/<timestamp>-report.html`；报告主体按“单个币一章”写，且每章开头突出 `方向判断`、`利好/利空落地`、`追进去风险`、`操作倾向`，再解释消息是什么、为什么利多/利空、是否已定价和后续观察点，不用候选列表替代分析
+- 报告交付是硬门禁：只要已经产出选币、候选、观察清单或逐币分析结论，就必须先生成 HTML 文件并确认存在；最终回复第一屏必须返回可直接点击打开的 Markdown 链接，例如 `[打开 HTML 报告](file:///Users/you/project/.tmp/crypto-news-analysis-report/20260821-2336-report.html)`，并同时列出 HTML 绝对路径，不能只写“报告已生成”
+- 只有用户明确说“不要报告 / 不要 HTML / 只在聊天里给简版”，或渲染脚本/文件系统实际失败时，才允许不返回 HTML；失败时必须用“报告生成失败”说明命令、错误原因和已完成数据范围，并给完整 Markdown 版报告兜底
+
+使用示例：
+
+- “只分析不看仓位，帮我把最近 72 小时消息面机会做成 HTML 报告”
+- “用 skill 帮我选币”（默认也会返回 HTML 报告）
+- “结合 news-intel 和 market-structure，整理 BTC/ETH/SOL/XRP 的消息和结构报告”
+- “只看 Binance 股票代币，分析 UNITREE/KUAISHOU/CXMT 的底层公司消息和合约结构，出 HTML 报告”
+- “不要调用账户接口，只给公开信息和行情结构，输出 HTML”
+- “找未落地之前的消息去埋伏，只要未来催化和提前布局条件，出 HTML 报告”
+
 ### crypto-news-selector
 
 结合近期可追溯消息、Binance U 本位永续真实行情及账户余额筛选候选币，并行运行短周期滚动篮子与持有 3–21 天的中长线波段，给出市价/近价限价开仓、逐仓/全仓模式、数量、杠杆、止盈和止损计划。默认只读；用户单独开启最小化合约交易权限后，支持“生成短时订单草案 → 用户逐单精确确认 → 自动市价开仓并按行情动态分配 1–3 级止盈数量、挂剩余仓位止损”的半自动模式。支持以月收益 100%+ 作为研究目标，但不承诺收益，并通过硬性回撤闸门约束尾部风险
@@ -65,12 +160,13 @@ npx skills add xiyueyezibile/xiy-skills@crypto-news-selector -g -y
 - 使用至少 20 笔完整交易滚动统计胜率、盈亏 R、期望值和最大回撤，以基准/乐观/压力情景检验月度目标，不靠加杠杆伪造策略期望
 - 输出方向、市价参考和最大成交偏差、结构止损、分级止盈、风险收益比、失效条件和置信度
 - 自动过滤稳定币相关标的、非交易状态合约和低流动性候选，不为凑数给出低质量机会
-- 所有新闻要求标明来源、发布时间和链接，行情或消息过期时不提供立即入场结论
-- 可在用户明确授权后以 `0600` 权限保存 Binance 密钥到 `~/.crypto`；真实交易需要 Binance 合约交易权限和每笔精确确认令牌，始终禁止提现/转账权限
+- 所有新闻要求标明来源、发布时间、事件/生效时间、检索时间、距当前多久、时效性等级、有效窗口和链接，行情或消息过期时不提供立即入场结论
+- 可在用户明确授权后以 `0600` 权限保存 Binance 密钥到 `<项目根目录>/.crypto`；真实交易需要 Binance 合约交易权限和每笔精确确认令牌，始终禁止提现/转账权限
+- `<项目根目录>/.crypto/` 已加入 `.gitignore`，用于保存 Binance 凭证、本地流水、学习 Wiki 和确认草案；也可通过 `CRYPTO_ROOT=/path/to/.crypto` 显式覆盖
 - 半自动执行支持单笔市价计划；先生成默认 10 分钟有效的草案，只有用户回复 `确认执行 TOKEN` 才按当时市价设置杠杆/保证金模式、开仓并通过 `algoOrder` 挂 `MARK_PRICE` 触发的止盈止损，不再使用价格漂移拒单门槛
 - 自动下单检测单/双向持仓模式、交易规则、同币已有仓位和最小名义金额；止损保护失败会尝试紧急 reduce-only 平仓，超时或未知订单状态不会自动重试
-- 每次触发 Skill 都自动对比 Binance 当前持仓、差异币种的近期成交与 `~/.crypto` 未平仓流水，主动发现漏记开仓、加减仓和疑似平仓；能唯一重建时补记并复盘，存在歧义时才询问最少信息
-- `~/.crypto/llm-wiki` 保存用户提供的学习资料、已验证优势、重复坑位和条件式规则；每次建议前必须读取
+- 每次触发 Skill 都自动对比 Binance 当前持仓、差异币种的近期成交与 `<项目根目录>/.crypto` 未平仓流水，主动发现漏记开仓、加减仓和疑似平仓；能唯一重建时补记并复盘，存在歧义时才询问最少信息
+- `<项目根目录>/.crypto/llm-wiki` 保存用户提供的学习资料、已验证优势、重复坑位和条件式规则；每次建议前必须读取
 - 用户确认实际开仓时追加开仓记录，并把消息催化、技术与衍生品确认、仓位杠杆依据、止盈止损、净盈亏比、失效条件、置信度、数据截止时间和来源完整嵌入流水，保证换对话后仍可按原始理由复盘
 - 用户确认全部平仓后计算结果、复盘盈亏归因，并将可迁移经验沉淀进 LLM Wiki
 - 自动市价执行支持 1–3 级动态数量止盈与剩余仓位整仓止损；各级数量由目标确定性和趋势空间决定，不写死比例。近价限价、加仓、反手和移动止损仍由用户自行完成
@@ -89,7 +185,7 @@ npx skills add xiyueyezibile/xiy-skills@crypto-news-selector -g -y
 - “确认执行 AbCd1234Token”
 - “T-xxx 已经在 66000 全部平仓，手续费 1.2 USDT，帮我复盘并沉淀经验”
 
-首次使用时，让 Agent 执行 `python3 scripts/crypto_memory.py init` 初始化 `~/.crypto`。需要加入账户风险判断时，再执行 `python3 scripts/crypto_memory.py configure-binance`，通过隐藏输入保存 Binance 凭证。启用半自动执行时，只打开 U 本位合约交易，继续关闭现货、提现和转账并限制可信 IP；每笔真实订单仍必须使用 10 分钟精确确认令牌。
+首次使用时，让 Agent 执行 `python3 scripts/crypto_memory.py init` 初始化 `<项目根目录>/.crypto`。需要加入账户风险判断时，再执行 `python3 scripts/crypto_memory.py configure-binance`，通过隐藏输入保存 Binance 凭证。启用半自动执行时，只打开 U 本位合约交易，继续关闭现货、提现和转账并限制可信 IP；每笔真实订单仍必须使用 10 分钟精确确认令牌。
 
 ### component-validation-mock
 
@@ -105,6 +201,7 @@ npx skills add xiyueyezibile/xiy-skills@component-validation-mock -g -y
 - 高清模式默认使用 macOS 系统原生截图；Chrome 在副屏时直接按显示器编号捕获该屏，再从原始 PNG 无缩放裁切，无需把窗口拉回主屏
 - Chrome/Browser 若只导出 CSS 像素尺寸 JPEG，即使页面 DPR 正确也判为普通截图，不会转 PNG 或放大后冒充高清
 - 移动端高清截图复用用户预先准备的 Chrome DevTools 设备页面；页面或权限未准备时给出一次性准备提醒
+- 写回 Wiki/飞书表格单元格时使用最终交付原图尺寸，默认移动端 `390×844` 原图直出，不用缩略图替代表格内验收图
 - 用户明确不需要高清时回退普通浏览器截图，并清楚标记为非系统高清截图
 - 用户给出的 URL 仅用于锁定目标页面，不假设该地址原本就能看到组件
 - 在目标 URL 对应的真实页面入口增加临时 Mock，打开用户给定或实际确认的同一个 URL 验证，不为触发 Mock 追加 `componentMock` 等新参数
@@ -127,6 +224,119 @@ npx skills add xiyueyezibile/xiy-skills@component-validation-mock -g -y
 - “用 390x844 移动端验证 SkuPanel，点开规格后再截图”
 - “给空态组件做个 mock，输入关键词并按 Enter 后验证”
 
+### app-component-upgrade-mock-screenshot（internal）
+
+APP/H5 组件升级 Mock 截图硬流程：在真实业务页面中 mock 目标组件或状态，优先用 Chrome DevTools iPhone 12 Pro 移动端截图，并把截图写回组件升级验证文档；当用户要求组件升级截图、文档行截图回填或真实页面 Mock 验证时使用。
+
+本仓库内置路径：
+
+```bash
+internal-skills/app-component-upgrade-mock-screenshot
+```
+
+同步到 Trae：
+
+```bash
+rsync -a --delete internal-skills/app-component-upgrade-mock-screenshot/ ~/.trae-cn/skills/app-component-upgrade-mock-screenshot/
+```
+
+功能特性：
+
+- 用生命周期脚本强制记录开始检查、目标定位、mock 实施、移动端验证、截图校验、文档回写和清理状态
+- 默认走 Chrome DevTools iPhone 12 Pro 设备栏，切设备后必须刷新并校验 `innerWidth`、DPR、ready 标记和移动端布局
+- DevTools 自动化失败时，先打开可由用户操作的 Chrome/DevTools 界面，让用户手动调到 iPhone 12 Pro 移动端并刷新；用户确认后仍由 Agent 读取运行时证据并继续截图
+- 只有用户协助预调也不可用、无法验证移动端 ready，或用户明确接受时，才进入 CDP 兜底
+- 截图后必须打开图片自检，确认目标组件完整可见、无遮挡、不是 PC 布局、不是半张图，且 mock 数据符合真实业务语义
+
+### lightweight-cdp-screenshot（internal）
+
+轻量 CDP 移动端截图 Skill：仅面向 `fe-alliance-mobile` 和 `alliance-mobile-mono` 两个移动端仓库，在真实业务页面里做轻量 Mock 并串行截图，默认使用独立 Chrome CDP、`390×844` CSS viewport、DPR `3`，输出高 DPR PNG；当用户只要轻量 Mock/页面截图、不需要生命周期报告或文档回写时使用。
+
+本仓库内置路径：
+
+```bash
+internal-skills/lightweight-cdp-screenshot
+```
+
+同步到 Trae：
+
+```bash
+rsync -a --delete internal-skills/lightweight-cdp-screenshot/ ~/.trae-cn/skills/lightweight-cdp-screenshot/
+```
+
+功能特性：
+
+- 零 npm 依赖，使用 Node 24 原生 `fetch`/`WebSocket` 调 Chrome CDP
+- 只适用于 `fe-alliance-mobile` 和 `alliance-mobile-mono`，不作为通用网页截图工具
+- 轻量 Mock 必须挂在目标组件真实业务页面里，禁止 demo 页、孤立组件页或脱离业务链路的 shell
+- 每张截图独立 page，串行执行，并通过 `about:blank` 隔离上一张状态
+- 默认校验 `innerWidth=390`、`devicePixelRatio=3`、PNG `1170×2532`
+- 随包提供移动端参考图和 meta，默认校验展示尺寸接近 `390×844`、宽高偏差不超过 `8%`、宽高比偏差不超过 `3%`
+- 默认拦截 `undefined`、`NaN` 等明显 Mock 失真文本
+- 保留高清源图，不为了展示尺寸先降采样
+- 输出 `manifest.json` 记录 URL、文件、viewport、DPR、PNG 尺寸和 ready 证据
+
+### mock-video-verification（internal）
+
+基于轻量 CDP 截图逻辑的 Mock 视频验证 Skill：仅面向 `fe-alliance-mobile` 和 `alliance-mobile-mono`，在真实业务页面中做最小 Mock，按声明式点击/输入/断言步骤录制移动端 WebM 视频，并同步交付高 DPR 关键帧、交互 trace 和 manifest；当用户需要录制 Mock 交互过程并证明关键状态时使用。
+
+本仓库内置路径：
+
+```bash
+internal-skills/mock-video-verification
+```
+
+同步到 Trae：
+
+```bash
+rsync -a --delete internal-skills/mock-video-verification/ ~/.trae-cn/skills/mock-video-verification/
+```
+
+功能特性：
+
+- 复用独立 Chrome CDP、`about:blank -> 目标 URL` 状态隔离、iPhone 等效 `390×844` viewport 和 DPR `3` 的质量约束
+- 只接受 JSON 中声明的 `tap`、`click`、`input`、`key`、`scroll`、`wait`、`assert` 和 `snapshot`，不执行动作文件里的任意 JavaScript
+- 使用 Chrome `MediaRecorder` 把 CDP 连续帧编码为无音频 WebM，不依赖 npm 或 ffmpeg，也不会录入浏览器地址栏、DevTools 或桌面窗口
+- 默认在 ready 和每个交互后输出 `1170×2532` 高 DPR PNG，保留可逐状态复验的图片证据
+- 校验 `innerWidth=390`、`devicePixelRatio=3`、拒绝文本、WebM 容器/尺寸/时长/帧数，并输出动作时间线、关键帧路径和文件哈希到 trace/manifest
+- 强制 Mock 挂在目标组件真实业务页面和原有打开链路中，禁止 demo、playground、孤立组件页或脱离业务链路的 mock shell
+
+使用示例：
+
+```bash
+PATH="$HOME/.nvm/versions/node/v24.18.0/bin:$PATH" \
+node internal-skills/mock-video-verification/scripts/cdp_record_video.mjs \
+  --url "http://localhost:4000/pages/coupon" \
+  --name coupon-sheet-flow \
+  --actions /tmp/coupon-sheet-actions.json \
+  --ready-selector "[data-component-validation-ready='coupon-sheet']" \
+  --out-dir /tmp/mock-video-verification
+```
+
+### upgrade-alliance-h5（internal）
+
+H5 业务升级到 `@ecom/auxo-mobile-alliance@2.1.3` 的硬流程：处理换包或升版本、`appnameAlliance` 配置判断、已删除导出迁移、Button/Input/Textarea/Empty/NavigationBar breaking change 审计，并交付带截图证据的三表组件升级清单；当用户要求 Alliance H5 组件库升级或真实业务回归交付时使用。
+
+本仓库内置路径：
+
+```bash
+internal-skills/upgrade-alliance-h5
+```
+
+同步到 Trae：
+
+```bash
+rsync -a --delete internal-skills/upgrade-alliance-h5/ ~/.trae-cn/skills/upgrade-alliance-h5/
+```
+
+功能特性：
+
+- 用生命周期脚本强制记录升级基线、模式判定、影响扫描、三表清单、实施升级、验证结果和最终交付
+- 三表组件升级清单固定拆成“受升级影响页面相关组件”、“用户指定升级页面相关组件”和“公共组件关联受影响页面”
+- 三张组件表保留组件截图（升级前/升级后）列；主页面截图和二级页面/路由截图放入新增的独立“升级页面截图清单”，不扩展组件表列
+- 最终组件升级清单必须严格符合 `component-upgrade-checklist-template.md`，并通过 `lifecycle.py validate-checklist-doc` 校验标题、顺序、核心表头和单组件单行
+- 未执行或阻塞的截图项必须在表格单元格内写明原因，不能留空或口头补充
+
 ### prd-to-tech-code
 
 把 PRD、聊天记录、其他文档、手动纠正和一个或多个仓库的代码证据转成可执行技术方案，并在信息足够时继续完成代码实现
@@ -144,11 +354,20 @@ npx skills add xiyueyezibile/xiy-skills@prd-to-tech-code -g -y
 - 当前输入与原业务差异过大但用户未明确新业务时，先写入原业务并在交付时提示用户确认是否拆成新业务
 - 技术方案必须读取仓库代码，业务可跨多个仓库，并区分需要修改的仓库和只读参考仓库
 - 技术方案保留必要资料图、流程图、架构图、时序图、改造前后示意、PRD/设计稿截图引用和关键表格，方便评审者阅读
+- 完善已有评审 Wiki / 多需求技术方案时，默认采用“参考文档与证据来源 + 按需求点逐章展开”的格式：每个需求点就地包含现状图/目标图、差异表、现状代码、技术实现、文件落位、状态异常、依赖与验收
+- `references/technical-plan-template.md` 已按该评审格式重写，默认结构为：负责人范围、范围与共用基线、按页面分组的需求点章节、跨页面联调上线、写作与更新硬规则
+- 总览中必须列“涉及代码仓库与页面清单”，但只列用户/负责人范围内要改的页面、模块和对应协议生成配置；非负责人范围页面即使是只读参考也不要列成“涉及页面”
+- 每个需求点必须给“设计稿与视觉资源位”留位置；即使设计稿暂缺，也要标注待补链接、关键切图/标注和视觉验收项，避免用 PRD 截图或数据来源证据替代最终设计稿
+- 回写 PRD 图、设计稿图或截图时必须保持原图宽高比例，不把所有图片统一写成 `512×512` 等固定正方形；回写后需回读校验展示尺寸未被拉伸
+- 后续根据用户纠正、源技术方案或新增仓库证据修正文档时，必须拆回对应需求点或共用基线章节，不把具体实现规则追加到文末“补充说明/校准补充”汇总章节
 - 业务知识区记录来源摘要、资料图材料、仓库边界、代码证据、稳定需求、技术决策、用户纠正、约束和最新技术方案
 - 读取到的稳定代码事实、接口封装、类型、权限、配置、数据流和跨仓库契约可写入业务 Wiki 复用
 - 按“信息收集 -> 当前业务配置读取 -> 业务知识库读取 -> 仓库代码阅读 -> 澄清缺口 -> 模板技术方案 -> 执行计划 -> 代码实现 -> 知识库沉淀 -> 交付说明”推进
 - 用户明确要求直接执行且信息足够时，不停留在方案层，会继续落代码
 - 在已有仓库中优先复用现有目录结构、请求封装、类型系统、组件模式和错误处理
+- 技术方案转代码时保持最小改动，只修改需求必需文件；新生成的源文件需要在文件顶部或核心导出附近写必要注释，说明文件职责、适用场景、主要输入输出或对应需求点
+- 不做无关重构、无关格式化、无关文件移动、无关依赖升级；修改已有文件时只在复杂状态机、降级策略、跨仓库协议适配或非显然业务规则处补充简洁注释
+- 技术方案转代码后必须生成 HTML 代码改动报告，默认路径 `.tmp/prd-to-tech-code/code-change-report.html`；报告左侧展示代码改动（文件树、diff、关键片段），右侧逐改动说明为什么改、旧逻辑、新增逻辑、影响范围、对应技术方案点和验证点
 - 仅在关键约束缺失会影响架构、数据契约、用户可见行为或上线风险时追问
 - 技术方案必须能直接指导代码落位，详细到仓库、文件路径、现有锚点、改动类型、要编写的代码职责、依赖、输入输出、异常状态和验证点
 - 技术方案覆盖背景目标、资料图与改造示意、需求拆解、当前系统理解、代码落位清单、数据与接口、前后端实现、异常降级、风险取舍和执行计划
