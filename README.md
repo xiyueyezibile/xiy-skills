@@ -56,6 +56,7 @@ npx skills add xiyueyezibile/xiy-skills -g -y --skill crypto-news-selector-pack 
 
 ```bash
 npx skills add xiyueyezibile/xiy-skills@crypto-news-selector-pack -g -y
+npx skills add xiyueyezibile/xiy-skills@crypto-news-analysis-report -g -y
 npx skills add xiyueyezibile/xiy-skills@crypto-news-intel -g -y
 npx skills add xiyueyezibile/xiy-skills@crypto-market-structure -g -y
 npx skills add xiyueyezibile/xiy-skills@crypto-risk-ledger -g -y
@@ -77,18 +78,24 @@ npx skills add xiyueyezibile/xiy-skills@crypto-news-selector -g -y
 
 - 一条安装命令装完整协作包，也支持每个子 Skill 独立安装和独立触发
 - 默认只读，任何真实交易写接口都必须先有账户审计、订单草案和逐单精确确认
+- 筛选顺序固定为“先信息差池、再行情验证”：优先找未来 1–30 天未完全落地的公告、解锁、升级、监管、财报、产品和代币经济节点；涨幅榜、跌幅榜、成交额榜只能作为验证雷达或补漏线索，不能作为核心候选主入口
+- 报告必须拆分 `提前埋伏池` 与 `已启动确认池`：前者要求未来节点明确且未明显抢跑；后者说明消息已被资金部分交易，只能等回踩承接或突破后回踩确认
 - 回复消息面结论时必须逐条带发布时间、事件/生效时间、检索时间、距当前多久、时效性等级和有效窗口；时间不明的消息只能做线索，不能作为核心催化
 - 新闻、行情、风险、执行四类结论分层输出，便于复核某一环节是否缺证据
 - 默认报告交付：用户只说“用 skill 选币 / 帮我选币 / 看消息面机会 / 给观察清单”时，也必须先生成 HTML 报告，再在最终答复最前面给 `[打开 HTML 报告](file:///absolute/path/report.html)` 和 HTML 绝对路径；除非用户明确说不要文件/不要 HTML，不能只给聊天正文
+- 报告格式固定对齐样例 `.tmp/crypto-news-analysis-report/20260822-1035-skill-selection-report.html`：`数据时间` -> `结论摘要` -> `已开仓催化落地跟踪` -> `逐币消息面深度分析` -> `股票代币 / TradFi 合约信息` -> `摘要矩阵` -> `来源列表` -> `声明`；必须通过 `crypto-news-analysis-report/scripts/render_report.py` 生成，不手写其他 HTML 模板
 - 纯分析 HTML 报告生成后，最终答复直接给 `[打开 HTML 报告](file:///absolute/path/report.html)`，避免只给相对路径或口头说明；如果报告生成失败，必须说明失败命令和原因，并给完整 Markdown 版报告兜底
 - 用户声明已经开仓后进入 `position_followup` 持仓跟踪状态：能从只读账户唯一确认的写正式 ledger；缺少方向、入场价、数量时不伪造流水，而是在 `<项目根目录>/.crypto/position-watch/` 建立待补成交细节的跟踪清单，并持续复核相关新闻、未来催化落地/延期/取消、反向消息和关键失效位
 - 跟单、子账户、其他交易所或机器人仓位不一定出现在当前 Binance 主账户 API 快照中；用户未明确说平仓前，`position-watch` 中的 active 跟踪不能因快照无持仓而关闭。后续生成 HTML 报告时必须追加“已开仓催化落地跟踪”区块，展示上次开仓催化当前是否落地
+- 下架、停止开仓、自动结算类题材即使最终盈利，也必须复盘中途最大不利浮动、短挤、流动性和退出纪律；不能把最终盈利反推为入场质量好
+- 网络升级、硬分叉、治理执行、产品发布等事件抢跑仓出现浮盈后，必须提前定义 TP1、移动止损或关键位跌破退出，避免一根阴线把浮盈打回保本
 - 多币篮子、中长线波段和单币精选共享同一 `<项目根目录>/.crypto` 生命周期与复盘闭环
 - 子 Skill 未安装时，总控会按对应职责降级处理并标明缺少的自动化能力
 
 使用示例：
 
 - “用消息面选币协作包，先审计账户，再筛最近 72 小时的 5 个 U 本位候选”
+- “先找未来 1–30 天未落地的信息差事件，再用成交额和 1d/4h/1h/15m 结构验证，不要先按涨幅榜倒推”
 - “只分析不看仓位和开仓，结合消息面和行情结构整理一份 HTML 报告”
 - “只跑 news-intel，帮我查 OP 最近一个月有没有持续催化”
 - “只跑 market-structure，分析 BTC/ETH/SOL 现在有没有市价或近价限价结构”
@@ -114,6 +121,7 @@ npx skills add xiyueyezibile/xiy-skills -g -y --skill crypto-news-analysis-repor
 - 只使用公开新闻、公告和 Binance 公共行情，适合“只分析不交易”的场景
 - 新增新浪财经公开新闻源脚本 `scripts/sina_finance_news.py`，可按关键词从财经、股票、美股、港股、行业滚动新闻中补充中文消息
 - 强制每条消息写明发布时间、事件/生效时间、检索时间、距当前多久、时效性等级和有效窗口
+- 默认先找信息差再看行情：未落地未来节点优先，Binance 涨跌幅/成交额榜只用于确认流动性、判断是否已抢跑和发现补漏候选；不得先看榜单再倒推泛泛消息
 - 用 `crypto-news-intel` 判断催化剂质量与已定价风险，用 `crypto-market-structure` 判断 1d/4h/1h/15m 结构
 - 支持股票代币 / TradFi perpetual 专用流程：区分底层股票公司消息和 Binance 合约/交易工具消息，标注底层资产、股票市场、`TRADIFI_PERPETUAL` 合约类型、交易时段错位和消息传导路径
 - 可选接入 `finviz-screener` 作为美股候选池辅助，但主驱动仍是消息面；FinViz 的主题、财务或技术过滤结果不能替代新闻/公告催化
@@ -122,7 +130,7 @@ npx skills add xiyueyezibile/xiy-skills -g -y --skill crypto-news-analysis-repor
 - 支持把 B 站等二级内容作为方法论学习来源：只沉淀可验证的视频元数据、简介要点和选币方法，不把 UP 主观点、标题或评论区当作交易核心事实；所有候选仍需回到官方公告、交易所公告、链上数据、公司财报/IR 或监管文件验证
 - 候选只标注 `可继续跟踪`、`等触发`、`只观察`、`淘汰`，不输出账户相关数量和杠杆
 - 报告中的“落地”指利好/利空效应是否已经通过供需、基本面、价格结构、成交量/OI/资金费率或交易限制兑现，不是事件本身是否发生；事件排期或完成状态应单独写在 `事件/生效时间`、`未来催化节点`、`当前阶段`
-- 随包提供 `scripts/render_report.py`，把结构化分析结果渲染为 `.tmp/crypto-news-analysis-report/<timestamp>-report.html`；报告主体按“单个币一章”写，且每章开头突出 `方向判断`、`利好/利空落地`、`追进去风险`、`操作倾向`，再解释消息是什么、为什么利多/利空、是否已定价和后续观察点，不用候选列表替代分析
+- 随包提供 `scripts/render_report.py`，把结构化分析结果渲染为 `.tmp/crypto-news-analysis-report/<timestamp>-skill-selection-report.html`；报告主体按“单个币一章”写，且每章开头突出 `方向判断`、`利好/利空落地`、`追进去风险`、`操作倾向`，再解释消息是什么、为什么利多/利空、是否已定价和后续观察点，不用候选列表替代分析；HTML 结构固定对齐 `.tmp/crypto-news-analysis-report/20260822-1035-skill-selection-report.html`
 - 报告交付是硬门禁：只要已经产出选币、候选、观察清单或逐币分析结论，就必须先生成 HTML 文件并确认存在；最终回复第一屏必须返回可直接点击打开的 Markdown 链接，例如 `[打开 HTML 报告](file:///Users/you/project/.tmp/crypto-news-analysis-report/20260821-2336-report.html)`，并同时列出 HTML 绝对路径，不能只写“报告已生成”
 - 只有用户明确说“不要报告 / 不要 HTML / 只在聊天里给简版”，或渲染脚本/文件系统实际失败时，才允许不返回 HTML；失败时必须用“报告生成失败”说明命令、错误原因和已完成数据范围，并给完整 Markdown 版报告兜底
 
@@ -145,7 +153,8 @@ npx skills add xiyueyezibile/xiy-skills@crypto-news-selector -g -y
 
 功能特性：
 
-- 先查项目方、交易所、监管机构等公开消息，再用 1d / 4h / 1h / 15m 技术结构确认是否已被市场定价
+- 先查项目方、交易所、监管机构、公司 IR/财报等公开消息建立信息差候选池，再用 1d / 4h / 1h / 15m 技术结构确认是否已被市场定价；涨跌幅榜和成交额榜只做行情雷达，不做核心候选主入口
+- 每轮区分 `提前埋伏池` 和 `已启动确认池`，避免把已经涨跌幅前列、利好利空部分落地的币误写成提前埋伏
 - 新增独立 `medium_long` 中长线轨道：1d 定趋势、4h 建结构、1h 择时，默认持有 3–21 天，使用更宽结构止损、更小数量和 2x–4x 低杠杆，并与短篮子分开复盘
 - 内置 Binance 公共只读行情脚本，无需 API Key，可获取永续合约列表、24h 行情和多周期 K 线指标
 - 支持已触发后的市价入场，以及距离最新价不超过 `min(0.5%, 0.25×15m ATR)` 的结构近价限价单；限价单默认 30 分钟失效并要求重新分析
@@ -174,6 +183,7 @@ npx skills add xiyueyezibile/xiy-skills@crypto-news-selector -g -y
 使用示例：
 
 - “结合最近 72 小时消息，选 3 个适合关注的 U 本位合约币种”
+- “优先给我提前埋伏池，再给已启动确认池；涨跌幅榜只做补充验证”
 - “分析 BTC、ETH 和 SOL；如果现在满足条件，按我的账户余额给出市价开仓数量、逐仓杠杆与止盈止损”
 - “最近有什么消息驱动的做空机会？先检查消息是否已被定价”
 - “按月收益 100%+ 的进攻目标筛选，但严格执行回撤闸门；如果没有合格机会就观望”

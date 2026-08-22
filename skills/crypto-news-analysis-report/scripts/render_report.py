@@ -15,12 +15,15 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence
 
 
+REPORT_TEMPLATE_VERSION = "crypto-news-analysis-report/v1-20260822-1035"
+
+
 def now_stamp() -> str:
     return dt.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
 def default_output_path() -> Path:
-    return Path.cwd() / ".tmp" / "crypto-news-analysis-report" / ("%s-report.html" % now_stamp())
+    return Path.cwd() / ".tmp" / "crypto-news-analysis-report" / ("%s-skill-selection-report.html" % now_stamp())
 
 
 def safe_text(value: object) -> str:
@@ -239,6 +242,7 @@ def render(payload: Dict[str, object]) -> str:
   </section>
 """ % render_position_followups(position_followups)
     return """<!doctype html>
+<!-- report-template: %s -->
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -320,6 +324,7 @@ def render(payload: Dict[str, object]) -> str:
 </body>
 </html>
 """ % (
+        safe_text(REPORT_TEMPLATE_VERSION),
         safe_text(meta.get("research_time")),
         safe_text(meta.get("news_cutoff")),
         safe_text(meta.get("market_data_time")),

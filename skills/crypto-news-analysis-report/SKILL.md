@@ -52,10 +52,10 @@ python3 scripts/binance_market_snapshot.py scan --tradfi-only --limit 30
 python3 scripts/binance_market_snapshot.py analyze --include-tradfi --symbols UNITREEUSDT,KUAISHOUUSDT
 ```
 
-- HTML 报告默认写到项目根目录：
+- HTML 报告默认写到项目根目录，文件名必须带 `skill-selection-report`，便于和其他临时报告区分：
 
 ```text
-.tmp/crypto-news-analysis-report/<YYYYMMDD-HHMMSS>-report.html
+.tmp/crypto-news-analysis-report/<YYYYMMDD-HHMMSS>-skill-selection-report.html
 ```
 
 ## 报告交付硬门禁
@@ -71,7 +71,7 @@ python3 scripts/binance_market_snapshot.py analyze --include-tradfi --symbols UN
 python3 scripts/render_report.py --input <payload.json>
 ```
 
-3. 读取脚本输出的 `output` 和 `file_url`，并确认 `output` 对应文件真实存在。
+3. 读取脚本输出的 `output` 和 `file_url`，并确认 `output` 对应文件真实存在；默认输出文件名必须形如 `.tmp/crypto-news-analysis-report/20260822-1035-skill-selection-report.html`。
 4. 最终回复必须把报告链接放在最前面，格式固定为：
 
 ```markdown
@@ -99,13 +99,13 @@ HTML 绝对路径：/absolute/path/report.html
   - HTML 文件的绝对路径，便于用户在终端或 Finder 中定位。
 - 不要只返回相对路径、裸路径或“已生成报告”这类不可直接打开的说明；如果渲染脚本输出 `file_url`，优先原样使用该链接。
 - 如果用户指定输出路径，优先使用用户路径，但不要写入包含密钥、账户快照或私有成交的内容。
-- 汇总完公开消息和行情结构后，可把结构化结果保存成临时 JSON，再用随包脚本渲染 HTML：
+- 汇总完公开消息和行情结构后，可把结构化结果保存成临时 JSON，再用随包脚本渲染 HTML。**不得手写新的 HTML 模板，也不得使用与 `scripts/render_report.py` 不同的结构或样式**：
 
 ```bash
 python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
 ```
 
-输入 JSON 顶层字段优先使用 `meta`、`summary`、`coin_reports`、`sources`；兼容旧的 `candidates`、`details`，但新报告不要再把候选表当主体。脚本只渲染报告，不联网、不读取账户、不读取密钥。
+输入 JSON 顶层字段优先使用 `meta`、`summary`、`position_followups`、`coin_reports`、`candidates`、`stock_token_refs`、`sources`；兼容旧的 `details`，但新报告不要再把候选表当主体。脚本只渲染报告，不联网、不读取账户、不读取密钥。
 
 ## 强制时间与时效性
 
@@ -229,9 +229,29 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
    - 如需汇总，可放 3–5 条摘要卡片；不要用长表替代逐币分析。
    - 用 CSS 做清晰排版，适合浏览器打开和截图转发。
 
-## HTML 报告模板
+## 固定 HTML 报告模板
 
-报告必须包含以下区块：
+报告格式必须固定对齐本仓库样例：
+
+```text
+.tmp/crypto-news-analysis-report/20260822-1035-skill-selection-report.html
+```
+
+所有后续选币报告必须通过 `scripts/render_report.py` 生成，并保持 `report-template: crypto-news-analysis-report/v1-20260822-1035` 这一版结构。除非用户明确要求改版，不得按回答习惯临时改标题、区块顺序、CSS 风格或把摘要矩阵提前当主体。
+
+固定区块顺序：
+
+1. `<h1>消息面选币分析报告</h1>`
+2. `<section id="meta">` / `<h2>数据时间</h2>`
+3. `<section id="summary">` / `<h2>结论摘要</h2>`
+4. `<section id="position-followups">` / `<h2>已开仓催化落地跟踪</h2>`，仅当 `position_followups` 非空时出现，位置固定在摘要之后
+5. `<section id="coin-reports">` / `<h2>逐币消息面深度分析</h2>`
+6. `<section id="stock-token-refs">` / `<h2>股票代币 / TradFi 合约信息</h2>`，仅当 `stock_token_refs` 非空时出现
+7. `<section id="candidates">` / `<h2>摘要矩阵</h2>`，仅当 `candidates` 非空时出现，必须放在逐币深度分析之后
+8. `<section id="sources">` / `<h2>来源列表</h2>`
+9. `<section id="disclaimer">` / `<h2>声明</h2>`
+
+报告必须包含以下 HTML 骨架和字段语义：
 
 ```html
 <h1>消息面选币分析报告</h1>
