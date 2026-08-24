@@ -194,6 +194,7 @@ def init_command(args: argparse.Namespace) -> None:
     save_config(config)
     print(f"已初始化 Wiki 仓库：{wiki_path}")
     print(f"配置已写入：{CONFIG_PATH}")
+    sync(config, source, already_pulled=True)
 
 
 def link_command() -> None:
@@ -231,6 +232,9 @@ def sync(
     git(wiki, ["add", "-A"])
     git(wiki, ["commit", "-m", message])
     remote = remote_name(config)
+    if not git(wiki, ["remote", "get-url", remote], check=False):
+        print(f"已提交：{message}（未配置远端，跳过 push）")
+        return
     if branch == "HEAD":
         raise RuntimeError("Wiki 仓库处于 detached HEAD，已提交但无法安全 push")
     git(wiki, ["push", remote, f"HEAD:{branch}"])

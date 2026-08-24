@@ -94,7 +94,7 @@ python3 scripts/llm_wiki.py sync
 └── log.md
 ```
 
-已有 Wiki 文件不覆盖。初始化只建立结构和配置，不记录知识；后续 `record` 或 `sync` 的每次 Wiki 更新都会自动提交 push。
+已有 Wiki 文件不覆盖。初始化建立结构和配置后会自动提交并在有远端时 push 骨架；后续 `record` 或 `sync` 的每次 Wiki 更新都会自动提交 push。
 
 ### `link`
 

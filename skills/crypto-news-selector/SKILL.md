@@ -556,7 +556,7 @@ python3 scripts/binance_market_snapshot.py analyze --symbols BTCUSDT,ETHUSDT
 8. 用户声明“新开了”“已经开了”“按上一份报告开了”的标的必须进入 active 跟踪；后续报告应放在 `position_followups`，不能只作为新候选展示。缺少方向或数量时标注待补成交细节，但仍要跟踪消息落地。若本轮登记了 `observed_price_at_tracking`，直接将其写入 `entry`，并标记 `entry_source=user_declared_open_tracking_price`；该值是复盘基线，不得冒充交易所实际成交回报。
 9. 全市场报告的 JSON 顶层必须包含 `market_hotspots`、`screening_counts`、`liquidity_survivors` 和 `research_audit`，并在 `meta.full_universe_research=true` 时通过渲染器完整性校验。`screening_counts` 必须包含 `liquidity_threshold_quote_volume_usdt=10000000`、`post_filter_survivors`、`researched_survivors`、`analyzed_survivors`、`reported_risk_eligible` 和 `deep_analysis`；任一幸存标的缺少实际检索或四周期分析记录，集合不一致，或任一中高及以下风险标的缺少候选矩阵/逐币章节，渲染器必须拒绝生成报告。
 10. 新报告必须设置 `meta.report_contract="v5"`；v5 缺少 `market_hotspots` 时渲染器必须拒绝生成。每个逐币和持仓条目必须通过 `news_evidence` 或 `source_refs` 绑定消息，章节内显示可点击原始来源、来源层级、可靠性和关键事实。`风险与落地速览` 中已开仓标的置顶，高风险、已抢跑、需降风险或禁止追入项醒目标红。
-10. 生成后检查文件存在；最终回复第一屏必须给：
+11. 生成后检查文件存在；最终回复第一屏必须给：
 
 ```markdown
 [打开 HTML 报告](file:///absolute/path/report.html)
@@ -564,8 +564,8 @@ python3 scripts/binance_market_snapshot.py analyze --symbols BTCUSDT,ETHUSDT
 HTML 绝对路径：/absolute/path/report.html
 ```
 
-11. 报告链接之后只补 3–5 条最重要结论和交易边界。不能用长篇聊天 Markdown 代替 HTML 报告。
-12. 如果报告生成失败，最终回复必须用 `报告生成失败` 标题说明失败命令、错误原因和已完成的数据范围，并补一个完整 Markdown 版 `# 消息面选币报告`；不能静默降级为普通聊天结论。
+12. 报告链接之后只补 3–5 条最重要结论和交易边界。不能用长篇聊天 Markdown 代替 HTML 报告。
+13. 如果报告生成失败，最终回复必须用 `报告生成失败` 标题说明失败命令、错误原因和已完成的数据范围，并补一个完整 Markdown 版 `# 消息面选币报告`；不能静默降级为普通聊天结论。
 
 ## 输出格式
 

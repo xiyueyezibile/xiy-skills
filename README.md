@@ -28,7 +28,7 @@ python3 ~/.trae-cn/skills/llm-wiki/scripts/llm_wiki.py record \
 python3 ~/.trae-cn/skills/llm-wiki/scripts/llm_wiki.py sync
 ```
 
-初始化后 Wiki 仓库包含 `raw/`、`wiki/`、`WIKI_SCHEMA.md` 和 `log.md`；`record` 会更新知识页面、索引、当前工作标识和日志，然后自动执行 `git add -A`、提交和 push。自动 push 使用本机 Git 已配置的 remote 和凭据，不在 `~/.xiy` 保存 token、cookie、密码或私钥。
+初始化后 Wiki 仓库包含 `raw/`、`wiki/`、`WIKI_SCHEMA.md` 和 `log.md`，并自动提交 push 初始骨架；`record` 会更新知识页面、索引、当前工作标识和日志，然后自动执行 `git add -A`、提交和 push。自动 push 使用本机 Git 已配置的 remote 和凭据，不在 `~/.xiy` 保存 token、cookie、密码或私钥。
 
 该 Skill 参考 [Karpathy LLM Wiki pattern](https://github.com/MinhMPA/llm-wiki/blob/master/llm-wiki.md)：LLM Wiki 是持续编译和维护的结构化、可交叉链接知识库，不是简单的原文归档或每次查询临时拼接的 RAG 结果。
 
@@ -117,6 +117,7 @@ npx skills add xiyueyezibile/xiy-skills@crypto-news-selector -g -y
 - 每个候选和 active 持仓固定展示资产背景：资产类型、一级行业/赛道、细分模块、核心业务/协议用途、主要价格驱动、同风险簇和背景介绍；例如 NVDA 标为“半导体 / AI GPU 与加速计算”、MRVL 标为“半导体 / 定制 ASIC 与数据中心网络互连”、SAMSUNG 标为“半导体与消费电子 / DRAM、NAND 与晶圆代工”，用于识别看似不同标的背后的集中暴露
 - 报告必须拆分 `提前埋伏池` 与 `已启动确认池`：前者要求未来节点明确且未明显抢跑；后者说明消息已被资金部分交易，只能等回踩承接或突破后回踩确认
 - `初步落地` / `基本落地` 不等于淘汰：仍有未完成传导或后续节点时必须进入 `已启动确认池` 继续分析，写明已完成/未完成传导、下一验证节点、二阶段触发、保守目标、失效位、扣费后剩余净盈亏比和行情耗尽信号
+- 每个逐币深度分析和交易复盘固定执行“新闻事实 -> 成本/收入/供需 -> 公司利润或代币价值捕获 -> 市场是否已交易 -> 基本面定价还是杠杆清算 -> 结构确认 -> 逻辑失效 -> 扣费后净盈亏比”的闭合链；必须记录 `news_fact`、`economic_channel`、`value_capture`、`pricing_status`、`move_attribution`、`structure_trigger`、`invalidation`、`net_payoff_check`、`chain_status`、`chain_missing`，链条不完整时只能观察，不能生成订单草案
 - 额外维护 `传闻观察池`：每次触发先读取 `.crypto/rumor-watch/watchlist.json`，增量核验政策人物、名人品牌、项目生态和认证社媒公开传闻；状态按 `lead -> corroborated -> confirmed` 升级，直接来源冲突、否认或超过窗口则转为 `disputed/rejected/expired`
 - 传闻不会直接变成交易信号：`lead`、`corroborated` 和 `disputed` 固定只观察，只有监管、交易所、项目方或公司等直接来源确认后，才有资格进入核心候选并继续接受行情结构、已定价风险和盈亏比门禁
 - `crypto-news-intel/scripts/rumor_watch.py` 负责跨轮保存、去重、证据合并和过期处理；它只在 Skill、cron 或 Agent 调度器实际调用时运行，没有调度时不会宣称 24 小时后台监控
@@ -393,7 +394,7 @@ rsync -a --delete internal-skills/mobile-page-state-mock-screenshot/ ~/.trae-cn/
 - 每个场景只在真实数据/环境边界做最小 Mock，不新增 demo 页、孤立组件页或私有 URL 参数
 - 截图强制复用 `lightweight-cdp-screenshot`：独立 CDP page、串行执行、默认 `390×844` CSS viewport、DPR `3`、高 DPR PNG 和 manifest 校验
 - 逐图检查互斥状态串图、主题/按钮/组件显隐一致性、裁切遮挡、破图和 Mock 数据语义
-- 状态证据、模型、计划、截图和报告保存在 `~/.mobile-page-state-mock/`，不污染业务仓库
+- 状态证据、模型、计划、截图和报告统一保存在 `~/.page-screenshot/`，不污染业务仓库
 
 使用示例：
 
