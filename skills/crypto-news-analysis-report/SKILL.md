@@ -1,6 +1,6 @@
 ---
 name: crypto-news-analysis-report
-description: 消息面选币的纯分析报告 Skill。用户要求只做加密货币消息面 + Binance U 本位行情结构分析、不要看账户/仓位/开仓、不要调用私有接口，并希望整理成 HTML 报告时使用。该流程只协作 crypto-news-intel 与 crypto-market-structure，必须逐币做叙事化深度分析：消息是什么、发布时间/事件时间/时效性、为什么利多或利空、利好/利空效应是否已经落地/兑现（不是事件本身是否发生）、是否已被市场定价、后续观察点；生成可本地打开的 HTML 报告，并在最终答复返回可直接点击打开的 file:// 链接和绝对路径；不提供仓位数量、杠杆、保证金或下单确认令牌。
+description: 基于公开消息、市场热点、分层传闻和 Binance 公共行情生成逐币 HTML 报告。用户要求只分析、不看账户/开仓，或要求消息面/热点选币报告时使用；不提供仓位、杠杆或下单令牌。
 ---
 
 # Crypto News Analysis Report
@@ -46,12 +46,20 @@ description: 消息面选币的纯分析报告 Skill。用户要求只做加密�
 
 ```bash
 python3 scripts/sina_finance_news.py --query "阿里巴巴,快手,寒武纪" --category stock --category hk_stock --category us_stock --limit 20
-python3 scripts/binance_market_snapshot.py scan --limit 30
+python3 ../crypto-news-selector/scripts/build_universe_catalog.py
+python3 scripts/binance_market_snapshot.py scan --include-tradfi --limit 1000 --min-quote-volume 0
 python3 scripts/binance_market_snapshot.py analyze --symbols BTCUSDT,ETHUSDT,SOLUSDT
 python3 scripts/binance_market_snapshot.py scan --tradfi-only --limit 30
 python3 scripts/binance_market_snapshot.py analyze --include-tradfi --symbols UNITREEUSDT,KUAISHOUUSDT
 ```
 
+- 全市场选币必须先刷新 `crypto-news-selector/references/binance-usdm-universe.md/.json`，读取全部合约的 `market_type` 与 `news_sources` 后再过滤；不能用 `scan --limit 30/40` 代表全市场。若独立安装时缺少 `crypto-news-selector`，必须直接读取 Binance `exchangeInfo` 重建等价全量清单，并在报告中披露底池规模。
+- 全量覆盖默认包含普通加密永续和全部 TradFi 永续，显式区分加密币、美股/ETF/ADR、韩股、港股、A 股、商品和 Pre-IPO。季度合约计入覆盖审计，但不与同底层永续重复推荐。
+- 报告必须分开披露目录覆盖数、24h 行情初筛数、流动性通过数、实际消息核验数、逐币分析完成数、中高及以下风险写入报告数、逐币深度章节数和摘要淘汰数。全市场流动性门槛固定为 24h 成交额 `>= 10,000,000 USDT`，不得提高门槛缩小分析范围。`news_sources` 仅是检索渠道路由，不能证明来源已访问。
+- 全市场模式下，payload 必须保存完整 `liquidity_survivors` 明细；其 symbol 集合必须与 `research_audit` 完全一致。通过 1000 万 USDT 门槛的每个幸存标的都必须完成消息、定价及 1d/4h/1h/15m 结构分析。每条记录必须包含实际检查渠道/URL、查询词、检索时间、最新事件或 `no_valid_catalyst_found`、`analysis_completed=true`、完整 `analyzed_timeframes`、`market_data_time`、标准化 `chase_risk`、分析摘要、消息结论、结构结论、状态和原因。
+- 报告长度不设上限。追进去风险为 `低/中低/中/中高` 的全部标的必须同时进入候选矩阵和 `coin_reports` 深度章节；只有 `高/极高` 标的可以仅保留在逐项研究审计中，但仍必须完成并展示分析摘要。
+- 报告必须执行跨轮新颖性控制：读取最近报告的 `symbol/catalyst_id/reported_at/status/active_position` 历史；新候选冷却最近 3 份报告或 72 小时，同一催化冷却 7 天。候选条目记录 `novelty_status`、`repeat_count`、`repeat_penalty`、`prior_reports`、`cooldown_until`、`catalyst_id` 和 `selection_reason`。
+- `repeat_penalty >= 2` 的标的只能进入深度观察/已启动确认池，`repeat_penalty >= 3` 不得进入新候选矩阵；active 持仓只进入“已开仓催化落地跟踪”。若本轮没有合格新标的，报告必须明确说明，不得用重复标的填充候选数量。冷却只影响候选层，不能从逐项研究审计中删除本轮标的。
 - HTML 报告默认写到项目根目录，文件名必须带 `skill-selection-report`，便于和其他临时报告区分：
 
 ```text
@@ -64,7 +72,7 @@ python3 scripts/binance_market_snapshot.py analyze --include-tradfi --symbols UN
 
 执行要求：
 
-1. 汇总公开消息、公共行情和逐币判断后，先生成结构化 JSON payload。
+1. 汇总公开消息、公共行情和逐币判断后，先生成结构化 JSON payload。全市场模式必须设置 `meta.full_universe_research=true`；`screening_counts` 必须提供 `liquidity_threshold_quote_volume_usdt=10000000`、`post_filter_survivors`、`researched_survivors`、`analyzed_survivors`、`reported_risk_eligible`、`deep_analysis`，并提供完整 `liquidity_survivors` 和 `research_audit`。
 2. 调用随包渲染脚本：
 
 ```bash
@@ -91,6 +99,8 @@ HTML 绝对路径：/absolute/path/report.html
 
 - 生成任何新报告前，必须检查项目根目录 `.crypto/position-watch/` 是否存在 active 跟踪清单。若存在，报告必须包含“已开仓催化落地跟踪”区块：
   - 跟单仓、子账户或其他交易所仓位不能因当前 Binance 主账户 API 快照无持仓而视为已平仓；用户未明确说平仓前继续视为 active。
+  - 用户在对话中声明“已开”“新开了”“按上一份报告开了”某个标的时，必须立即把该标的视为 active 跟踪对象；若缺方向、入场价或数量，只补充 `user_declared_open=true`、来源、已知催化和待补字段，不得因为信息不全而漏进报告。
+  - 已经在 active 跟踪清单中的标的，例如用户明确说已经开的股票代币，后续报告必须放进 `position_followups`，不能只放在新候选、摘要矩阵或逐币候选里；只有用户明确说已平仓才移出 active。
   - 每个 active 标的都要展示：仓位来源、上次开仓催化、事件时间、当前是否落地/延期/取消、最新相关新闻、价格是否触发关键失效位、下一次复核时间。
   - 缺少方向、入场价、数量时，明确写“待补成交细节，不能计算盈亏/R 倍数/仓位风险”，但仍要跟踪消息落地情况。
 - 结构化 JSON 可包含 `position_followups` 数组，渲染脚本会在摘要后生成“已开仓催化落地跟踪”区块；生成报告时不要漏传 active watchlist。
@@ -105,7 +115,67 @@ HTML 绝对路径：/absolute/path/report.html
 python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
 ```
 
-输入 JSON 顶层字段优先使用 `meta`、`summary`、`position_followups`、`coin_reports`、`candidates`、`stock_token_refs`、`sources`；兼容旧的 `details`，但新报告不要再把候选表当主体。脚本只渲染报告，不联网、不读取账户、不读取密钥。
+输入 JSON 顶层字段优先使用 `meta`、`summary`、`market_hotspots`、`screening_counts`、`research_audit`、`position_followups`、`coin_reports`、`candidates`、`stock_token_refs`、`sources`；兼容旧的 `details`，但新报告不要再把候选表当主体。新报告必须设置 `meta.report_contract="v5"`，用于启用热点、深度和逐项来源硬校验；历史 v4 payload 仍可重渲染。脚本只渲染报告，不联网、不读取账户、不读取密钥。
+
+新报告必须提供 `market_hotspots`。该区块是市场环境参考，不是候选池，至少包含：
+
+- `as_of`：热点数据的绝对时间与时区。
+- `market_regime`：BTC/ETH 与高 Beta 标的共同反映的风险偏好状态。
+- `breadth`：上涨/下跌标的数量与比例。
+- `liquidity_concentration`：成交额集中度及主要贡献者。
+- `derivatives_context`：可得的 OI、资金费率、基差或爆仓环境；不可得时明确说明。
+- `themes`：每个主题必须包含 `name`、`stage`（`萌芽/扩散/拥挤/退潮`）、`heat_level`（`低/中/高`）、`representative_symbols`、量化 `evidence`、共同 `catalyst`、`crowding_risk`、`selection_use` 和公开 `sources` URL。
+- `selection_implication`：热点如何影响本轮候选补漏、追入风险和风险簇控制。
+- `limitations`：数据缺口和反向解释。
+
+没有一致性热点时允许 `themes=[]`，但必须提供 `no_dominant_theme_reason`。不能为填充报告强行命名热点，也不能用热点身份代替逐币消息来源和结构确认。
+
+每个 `coin_reports` 和 `position_followups` 条目必须包含 `asset_profile`：
+
+```json
+{
+  "asset_profile": {
+    "asset_type": "股票映射合约 / 加密原生代币 / 商品映射合约",
+    "sector": "半导体 / Layer 1 / DeFi / 存储网络",
+    "subsector": "AI 加速器 / 存储芯片 / 定制 ASIC 与网络互连",
+    "core_business": "公司主营业务或协议核心用途",
+    "price_drivers": ["收入或采用驱动", "供需驱动", "宏观或行业驱动"],
+    "risk_cluster": "AI 半导体 / 高 Beta L1 / 解锁供应压力",
+    "background": "面向非专业读者的 2-4 句背景介绍"
+  }
+}
+```
+
+- `sector` 表示一级行业或加密赛道，`subsector` 表示能区分业务差异的细分模块，不能把 `NVDA/MRVL/SAMSUNG` 都笼统写成“半导体”。
+- 股票映射合约示例：`NVDA=半导体 / AI GPU 与加速计算`、`MRVL=半导体 / 定制 ASIC、数据中心网络与互连`、`SAMSUNG=半导体与消费电子 / DRAM、NAND、晶圆代工`。
+- 加密原生代币也必须填写：例如 `STORJ=去中心化基础设施 / 分布式云存储`、`ENA=DeFi / 合成美元与收益型稳定币协议`、`XLM=支付公链 / 跨境支付与资产发行`。
+- `background` 必须解释“它是谁、解决什么问题或靠什么业务赚钱、代币/合约价格主要受什么影响”，不能只重复赛道标签。
+- `risk_cluster` 用于识别组合集中度；业务不同但共同受同一宏观因子驱动时仍应归入同一风险簇。
+- `candidates` 和 `stock_token_refs` 还要分别提供扁平的 `sector`、`subsector`、`risk_cluster`，使摘要矩阵与 TradFi 信息表直接可见；`stock_token_refs` 额外提供 `core_business`。
+- 渲染器会校验上述字段；任一逐币、active 持仓、候选或 TradFi 条目缺少对应资产画像时必须拒绝生成，不能用空白卡片降级。
+
+每个 `coin_reports` 和 `position_followups` 条目还必须提供非空 `news_evidence`，或通过 `source_refs` 精确引用顶层 `sources`。推荐直接写 `news_evidence`：
+
+```json
+{
+  "news_evidence": [{
+    "source_name": "项目方 / 公司 IR / 监管机构",
+    "title": "原始公告标题",
+    "source_tier": "L0 一手来源",
+    "reliability": "高；说明可确认什么、不能确认什么",
+    "published_at": "绝对时间 + 时区",
+    "event_time": "绝对时间 + 时区",
+    "retrieved_at": "绝对时间 + 时区",
+    "url": "https://...",
+    "key_facts": ["关键数字", "事件动作", "尚未确认的边界"]
+  }]
+}
+```
+
+- 逐项来源卡必须放在对应币或持仓章节内，不能让用户去报告末尾猜哪条消息对应哪个标的。
+- `source_tier` 必须区分一手官方/监管、主流媒体、二级聚合与传闻；`reliability` 必须说明证据边界。
+- `key_facts` 必须包含决定方向的关键数字和事实，不得只复制新闻标题。
+- `meta.report_contract="v5"` 时，缺市场热点、逐项来源、背景、利多/利空传导、落地、定价、结构、风险或观察点中的任一项，渲染器必须拒绝生成。
 
 ## 强制时间与时效性
 
@@ -134,7 +204,7 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
 | `新鲜` | 6–24 小时 | 可进入候选，重点检查是否已被定价 |
 | `仍有效` | 24–72 小时，且事件影响未完成或仍有后续窗口 | 可观察或等待结构触发 |
 | `中长线有效` | 3–30 天，且有持续采用、治理、监管、解锁、升级等后续路径 | 只进中长线/主题观察 |
-| `过期/已兑现` | 超出上述窗口，或事件已完成且缺少后续路径 | 淘汰或只作为背景 |
+| `过期/已兑现` | 超出上述窗口，或效应已充分兑现且缺少后续路径 | 淘汰或只作为背景 |
 | `时间缺失` | 无法确认发布时间或事件时间 | 只能作为待验证线索 |
 
 缺少明确时间或时效性等级的消息，不得被标记为“可做”。
@@ -142,6 +212,26 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
 ## 利好/利空落地口径
 
 报告里的 `落地程度` 指的是**消息对应的利好或利空是否已经兑现到可观察结果里**，不是简单判断“事件是否已经发生”。事件本身的排期、执行或完成状态应单独写在 `事件/生效时间`、`未来催化节点`、`当前阶段` 或 `事件进度` 中。
+
+## 新闻解释与利多利空拆解深度门槛
+
+逐币报告不能只写新闻标题、结论标签或一句“偏利多/偏利空”。每个进入 `coin_reports` 或 `position_followups` 的标的，都必须把新闻解释成可验证的交易逻辑；如果做不到，应降级为 `时间缺失`、`待验证线索`、`只观察` 或 `淘汰`。
+
+每条核心新闻至少回答：
+
+- **这个标的是什么**：先给资产类型、一级行业/赛道、细分模块、核心业务或协议用途、主要价格驱动和同风险簇，再讨论新闻；不能假设读者已经了解币或底层公司。
+- **新闻事实是什么**：谁在什么时间做了什么，涉及金额、规模、产品、监管动作、财报指标、订单、解锁比例、下架/结算时间等关键数字；不要只写标题。
+- **原始来源与可靠性**：区分官方公告、交易所公告、SEC/交易所/公司 IR、主流媒体、二级聚合、KOL/社媒传闻；二级聚合必须标注为二级来源，不能当作一手事实。
+- **为什么利多/利空**：用因果链说明它如何影响供给、需求、收入、成本、利润、监管折价、流动性、可交易性、资金费率、OI 或叙事扩散；不能只写“市场认为利好”。
+- **反向解释是什么**：同时列出为什么市场可能不买账，例如金额只是上限而非已执行、订单/合作未绑定收入、财报好坏混合、监管仍未批准、增发稀释抵消增长、利好已经提前抢跑。
+- **落地和定价证据**：把新闻发布时间与价格、成交量、OI/资金费率、1d/4h/1h/15m 结构对齐，说明利好/利空效应是未验证、初步落地、基本落地、已兑现/已定价还是证伪/反向落地。
+- **持仓含义**：如果标的是 active 仓位，必须额外说明这条新闻对当前仓位是增强原逻辑、削弱原逻辑、需要降风险、还是只作为背景；不能把已开仓标的当作普通新候选。
+
+股票代币 / TradFi perpetual 还必须额外拆开：
+
+- **底层公司消息**：财报、指引、订单、合作、监管、诉讼、融资/增发、回购、管理层、行业需求等，决定基本面方向。
+- **Binance 合约消息**：上线、tick size、保证金、杠杆、资金费率、交易时段和流动性，只说明交易工具变化，不能直接等同于底层公司利多/利空。
+- **正股确认**：合约 24/7 抢跑后，必须等待底层正股主要交易时段验证承接或证伪；休市期间的 Binance 单边波动不能单独作为低风险入场依据。
 
 判断 `利好/利空落地` 时优先看：
 
@@ -160,6 +250,34 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
 | `已兑现/已定价` | 利好/利空已经被市场充分交易，继续追入的边际收益下降，追进去风险通常上调。 |
 | `证伪/反向落地` | 事件发生后没有按预期方向传导，或出现反向价格/基本面证据。 |
 
+`初步落地` 和 `基本落地` 都表示传导尚未完全结束，不得自动归为背景或从 `coin_reports` 删除。报告必须继续评估二阶段利润空间，并补充：
+
+- `已完成传导`：已经由供需、基本面、价格、成交量、OI 或资金费率确认的部分。
+- `未完成传导`：仍待执行或验证的供需、采用、收入、监管、链上流量或价格路径。
+- `下一验证节点`：绝对时间、来源或明确的市场条件。
+- `二阶段触发`：回踩承接、突破后回踩、破位反抽不过或其他可复核结构。
+- `保守目标`、`结构失效位`、扣除手续费/滑点/资金费率后的 `剩余净盈亏比`。
+- `行情耗尽信号`：充分定价、量价背离、衍生品拥挤、结构失效或后续节点取消。
+
+部分落地标的应进入 `已启动确认池`。当二阶段触发已确认且剩余净盈亏比 `> 1` 时，仍可成为候选；只有效应已充分兑现且没有后续路径，或剩余净盈亏比 `<= 1`，才可淘汰。淘汰理由不能只写“已经落地”。
+
+`coin_reports` 和 `position_followups` 中的部分落地标的使用以下结构，渲染器会生成二阶段分析区块：
+
+```json
+{
+  "second_stage": {
+    "completed_transmission": "已经兑现的传导",
+    "remaining_transmission": "尚未兑现的传导",
+    "next_validation": "下一验证时间或条件",
+    "trigger": "二阶段确认触发",
+    "conservative_target": "保守目标",
+    "invalidation": "结构失效位",
+    "remaining_net_risk_reward": "扣费后的剩余净盈亏比",
+    "exhaustion_signals": ["充分定价或结构耗尽信号"]
+  }
+}
+```
+
 示例：
 
 - 解锁事件未来才发生，但价格已经提前放量下破并反抽不过：事件进度是 `未发生`，利空落地可写 `初步落地`。
@@ -171,11 +289,18 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
 1. **建立时间锚点**
    - 记录当前时间、时区、研究周期、消息检索截止。
    - 明确用户要短线、篮子观察还是中长线观察；未说明时默认短线 72 小时 + 中长线 30 天各给一栏。
-   - 用户要求“未落地之前的消息”“埋伏”“提前布局”时，切换到 `pre_landing` 模式：只把未来 1–30 天有明确节点、尚未完全兑现的事件作为核心候选；已完成且没有下一阶段的消息只能作背景。
+   - 用户要求“未落地之前的消息”“埋伏”“提前布局”时，切换到 `pre_landing` 模式：只把未来 1–30 天有明确节点、尚未完全兑现的事件作为提前埋伏核心；初步/基本落地但仍有二阶段路径的标的转入 `已启动确认池` 并继续分析，只有已充分兑现且没有下一阶段的消息才只作背景。
 
-2. **消息面取证**
-   - 按 `crypto-news-intel` 规则检索官方公告、交易所公告、监管文件、主流新闻和行业媒体。
-   - 只保留可追溯、可写出时间和链接的消息；社媒传闻放入“待验证线索”。
+2. **全市场覆盖审计**
+   - 读取最新全量清单，报告 `total`、各 `contractType` 数量和各 `market_type` 数量，确认普通永续与 TradFi 永续均已进入流动性和事件过滤。
+   - 机械过滤仅允许使用已披露的可复现硬条件；过滤后全部幸存标的必须逐项真实访问对应消息渠道，并写入 `research_audit`。每个记录必须沿用清单中的市场类型；不能把韩股、港股、A 股、商品或 Pre-IPO 统一写成美股。
+   - `researched_survivors` 和 `analyzed_survivors` 必须同时等于 `post_filter_survivors`，`liquidity_survivors` 与 `research_audit` 的 symbol 集合及 24h 成交额必须一致；任一通过 1000 万 USDT 门槛的标的未完成消息与多周期结构分析，或存在未解决抓取失败时，不得生成全市场报告。
+
+3. **消息面取证**
+   - 按 `crypto-news-intel` 规则对全部幸存标的检索官方公告、交易所公告、监管文件、主流新闻和行业媒体，不得先按已有排期或熟悉度抽样。
+   - 先读取 `.crypto/rumor-watch/watchlist.json`，并让 `crypto-news-intel` 对公开社媒、政策人物、名人品牌、生态关联方和直接参与方的传闻做增量核验；只保留可追溯、可写出时间和链接的消息。
+   - `lead` / `corroborated` / `disputed` 传闻必须放入“传闻观察池”，不能写成已确认事实、核心催化或可开仓机会；监管、交易所、项目方、公司等直接来源确认后，才能升级为 `confirmed` 并进入普通候选评估。
+   - 传闻观察项也必须写清首次发现、最后核验、来源层级、支持/否认证据、下一次复核时间、价格触发和失效条件；只有截图、群聊或匿名爆料且无 URL/时间的内容直接淘汰。
    - **消息面是主驱动**：先因为明确新闻、公告、财报、监管、产品、订单或行业事件形成候选，再用行情结构确认；不要先用涨幅榜、技术形态或 FinViz 因子筛出股票后反向找理由。
    - 中文财经消息可调用 `scripts/sina_finance_news.py`，尤其用于股票代币底层公司的财报、产品、政策、回购、增发、行业新闻；但新浪财经通常是媒体源，能找到公司公告或交易所披露时仍以原始披露为准。
    - 股票代币 / TradFi perpetual 需要额外检索底层股票公司的消息，而不是只看 Binance 上线公告：
@@ -186,19 +311,22 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
    - FinViz / `finviz-screener` 只能作为**美股候选池辅助**：用于确认某个消息主题下有哪些美股、流动性/市值/技术条件如何；不能把 FinViz 筛选结果本身当成消息催化，也不能让财务/技术因子取代消息面主线。
    - `pre_landing` 模式必须优先找排期事件：未来交易所上线/下架/结算、网络升级/硬分叉、治理执行、解锁、主网/产品发布、财报、监管听证/投票/裁决、指数/ETF/质押/空投等；没有未来节点的已落地新闻不得进入核心。
 
-3. **公共行情结构确认**
+4. **公共行情结构确认**
    - 用 Binance 公共行情确认标的是否为 U 本位永续且 `TRADING`。
    - 普通加密永续默认只接受 `PERPETUAL`；股票代币流程必须显式使用 `--include-tradfi` 或 `--tradfi-only`，并在报告中标注 `TRADIFI_PERPETUAL` 与 `underlyingType`。
-   - 对候选运行多周期分析，记录 `generated_at`、各周期最后 K 线收盘时间、价格、EMA、RSI、ATR、成交量相对变化。
+   - 对通过 1000 万 USDT 门槛的全部标的运行多周期分析，记录 `generated_at`、各周期最后 K 线收盘时间、价格、EMA、RSI、ATR、成交量相对变化；完成后统一评定 `低/中低/中/中高/高/极高` 追进去风险。
 
-4. **合并判断**
-   - 每个币只给分析状态，不给仓位金额：
+5. **合并判断**
+   - 每个通过门槛的币都要给分析状态，不给仓位金额：
      - `可继续跟踪`
      - `等触发`
      - `只观察`
      - `淘汰`
    - 判断依据必须同时包含消息时效性和行情结构；任何一个缺失都不能升级为高优先级。
+   - `低/中低/中/中高` 的标的必须写入候选矩阵和逐币深度章节；渲染脚本会按 `research_audit` 反查，遗漏任一标的即拒绝输出。`高/极高` 可只保留逐项审计与分析摘要。
+   - 传闻状态为 `lead`、`corroborated` 或 `disputed` 时只能标 `只观察`；行情已经启动则同时进入“已启动确认池”，但仍须等直接来源确认，不能仅凭涨幅升级。
    - `pre_landing` 候选额外标注 `未来催化节点`、`当前阶段`、`剩余时间`、`利好/利空落地程度`、`是否已被抢跑`、`提前埋伏条件`、`兑现风险`；如果已经明显抢跑，不能用“事件未发生”降低风险。
+   - `初步落地` / `基本落地` 标的必须保留逐币章节，并展示 `已完成传导`、`未完成传导`、`下一验证节点`、`二阶段触发`、`保守目标`、`结构失效位`、`剩余净盈亏比` 和 `行情耗尽信号`；字段不足时降级为 `只观察`，不能无痕排除。
 
 ### 风险标签必须按用户执行语义校准
 
@@ -219,12 +347,16 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
 - 对每个 `中` 或更低风险标签，必须同时写一句 `为什么现在可以开而不是只观察`；写不出来就上调到 `中高` 或 `高`。
 - `操作倾向` 不允许含混：若不是可直接开，必须写 `等触发：具体触发条件...` 或 `只观察`，不能只写“可继续跟踪”。
 
-5. **生成 HTML 报告**
+6. **生成 HTML 报告**
    - 报告应自包含：标题、数据时间、摘要卡片、逐币深度分析、风险提示、来源说明。
+   - 桌面端左侧必须有固定目录，至少可跳转到数据时间、结论摘要、市场热点参考、风险与落地速览、持仓跟踪、每个逐币章节、来源和声明；移动端改为横向目录，不遮挡正文。
+   - `风险与落地速览` 固定紧跟结论摘要，已开仓标的置顶，并直接展示当前落地、关键失效/风险和现在动作；高风险与禁止追入项使用红色强调，不能要求用户读完整份报告后自行寻找。
    - 不要把报告主体做成候选列表或表格；每个币必须单独成章，用自然语言解释消息逻辑。
-   - 每个币章节都要回答：消息是什么、为什么利多/利空、利好/利空效应是否已经落地/兑现、是否已经被价格交易、接下来观察什么。
+   - 每个币章节都要回答：这个标的是什么、属于哪个行业/赛道与细分模块、核心业务或协议用途是什么、消息是什么、原始来源是什么、关键数字是什么、为什么利多/利空、反向解释是什么、利好/利空效应是否已经落地/兑现、是否已经被价格交易、接下来观察什么。
    - 每个币章节顶部必须先给 `方向判断`、`利好/利空落地`、`追进去风险`、`操作倾向` 四个醒目结论，再展开论证；不要把这些关键信息埋在长段落里。
-  - 股票代币章节额外回答：这是底层股票公司的消息，还是 Binance 交易工具/合约参数消息；利多/利空是否传导到该 USDT 合约。
+   - 逐币正文里的 `消息是什么`、`为什么利多/利空`、`利好/利空效应落地了吗`、`是否已被定价` 不能各写一句话敷衍；每项必须有可核查事实和传导链，尤其是用户已开仓标的。
+   - 传闻观察项沿用现有逐币章节和摘要矩阵，不新增临时报表结构；章节中必须突出 `传闻状态`、`来源层级`、`是否允许进入核心候选`、`下一次核验时间`，操作倾向固定为 `只观察`，直到直接来源确认。
+   - 股票代币章节额外回答：这是底层股票公司的消息，还是 Binance 交易工具/合约参数消息；利多/利空是否传导到该 USDT 合约；正股交易时段是否已经验证。
    - `pre_landing` 报告每个币章节额外回答：未来催化节点是什么、现在处于哪一阶段、还剩多久、是否已被资金抢跑、提前埋伏要等什么价格/结构、兑现日怎么处理。
    - 如需汇总，可放 3–5 条摘要卡片；不要用长表替代逐币分析。
    - 用 CSS 做清晰排版，适合浏览器打开和截图转发。
@@ -237,19 +369,22 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
 .tmp/crypto-news-analysis-report/20260822-1035-skill-selection-report.html
 ```
 
-所有后续选币报告必须通过 `scripts/render_report.py` 生成，并保持 `report-template: crypto-news-analysis-report/v1-20260822-1035` 这一版结构。除非用户明确要求改版，不得按回答习惯临时改标题、区块顺序、CSS 风格或把摘要矩阵提前当主体。
+所有后续选币报告必须通过 `scripts/render_report.py` 生成，并保持 `report-template: crypto-news-analysis-report/v5-20260823-full-volume-analysis` 这一版结构。除非用户明确要求改版，不得按回答习惯临时改标题、区块顺序、CSS 风格或把摘要矩阵提前当主体。
 
 固定区块顺序：
 
 1. `<h1>消息面选币分析报告</h1>`
 2. `<section id="meta">` / `<h2>数据时间</h2>`
 3. `<section id="summary">` / `<h2>结论摘要</h2>`
-4. `<section id="position-followups">` / `<h2>已开仓催化落地跟踪</h2>`，仅当 `position_followups` 非空时出现，位置固定在摘要之后
-5. `<section id="coin-reports">` / `<h2>逐币消息面深度分析</h2>`
-6. `<section id="stock-token-refs">` / `<h2>股票代币 / TradFi 合约信息</h2>`，仅当 `stock_token_refs` 非空时出现
-7. `<section id="candidates">` / `<h2>摘要矩阵</h2>`，仅当 `candidates` 非空时出现，必须放在逐币深度分析之后
-8. `<section id="sources">` / `<h2>来源列表</h2>`
-9. `<section id="disclaimer">` / `<h2>声明</h2>`
+4. `<section id="market-hotspots">` / `<h2>市场热点参考</h2>`，新报告必填
+5. `<section id="risk-overview">` / `<h2>风险与落地速览</h2>`
+6. `<section id="research-audit">` / `<h2>逐项研究审计</h2>`，全市场模式必填
+7. `<section id="position-followups">` / `<h2>已开仓催化落地跟踪</h2>`，仅当 `position_followups` 非空时出现
+8. `<section id="coin-reports">` / `<h2>逐币消息面深度分析</h2>`
+9. `<section id="stock-token-refs">` / `<h2>股票代币 / TradFi 合约信息</h2>`，仅当 `stock_token_refs` 非空时出现
+10. `<section id="candidates">` / `<h2>摘要矩阵</h2>`，仅当 `candidates` 非空时出现，必须放在逐币深度分析之后
+11. `<section id="sources">` / `<h2>来源列表</h2>`
+12. `<section id="disclaimer">` / `<h2>声明</h2>`
 
 报告必须包含以下 HTML 骨架和字段语义：
 
@@ -268,6 +403,15 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
 <section id="summary">
   <h2>结论摘要</h2>
   <p>...</p>
+</section>
+
+<section id="market-hotspots">
+  <h2>市场热点参考</h2>
+  <p>市场状态、涨跌广度、成交额集中度、衍生品环境...</p>
+  <article>
+    <h3>主题名称</h3>
+    <p>阶段、热度、代表标的、量价证据、共同催化、拥挤风险、选币用途...</p>
+  </article>
 </section>
 
 <section id="coin-reports">

@@ -3,6 +3,35 @@
 
 ![skills cabinet](assets/readme-illustrations/01-skills-cabinet.svg)
 
+### llm-wiki
+
+个人 LLM Wiki Skill：维护一个独立的 Git Wiki 仓库，将原始资料和对话结论编译成结构化、可交叉链接的个人知识库，并识别当前正在处理的业务仓库和工作内容。
+
+`~/.xiy/config.json` 只保存 Wiki 仓库路径、remote 和业务仓库关联；配置指向的 Git 仓库根目录就是完整 Wiki，不再在业务仓库内创建 `llm-wiki/` 子目录。普通编码和其他 Skill 执行不会自动记录，只有手动调用时更新；每次使用前先 `git pull --ff-only` 拉取远端最新改动，确认本地 Wiki 干净后才继续；`record` 或 `sync` 更新后自动 commit 并 push。若有本地未提交改动、冲突或无法快进，会停止保护本地内容。
+
+安装：
+
+```bash
+npx skills add xiyueyezibile/xiy-skills@llm-wiki -g -y
+```
+
+使用：
+
+```bash
+python3 ~/.trae-cn/skills/llm-wiki/scripts/llm_wiki.py init \
+  --wiki-repo /path/to/llm-wiki
+python3 ~/.trae-cn/skills/llm-wiki/scripts/llm_wiki.py link
+python3 ~/.trae-cn/skills/llm-wiki/scripts/llm_wiki.py status
+python3 ~/.trae-cn/skills/llm-wiki/scripts/llm_wiki.py record \
+  --category decision \
+  --note "记录已经确认的决策"
+python3 ~/.trae-cn/skills/llm-wiki/scripts/llm_wiki.py sync
+```
+
+初始化后 Wiki 仓库包含 `raw/`、`wiki/`、`WIKI_SCHEMA.md` 和 `log.md`；`record` 会更新知识页面、索引、当前工作标识和日志，然后自动执行 `git add -A`、提交和 push。自动 push 使用本机 Git 已配置的 remote 和凭据，不在 `~/.xiy` 保存 token、cookie、密码或私钥。
+
+该 Skill 参考 [Karpathy LLM Wiki pattern](https://github.com/MinhMPA/llm-wiki/blob/master/llm-wiki.md)：LLM Wiki 是持续编译和维护的结构化、可交叉链接知识库，不是简单的原文归档或每次查询临时拼接的 RAG 结果。
+
 ### find skills
 
 ```bash
@@ -42,7 +71,7 @@ npx skills add xiyueyezibile/xiy-skills@commit-message-generator -g -y
 
 ### crypto-news-selector-pack
 
-消息面选币多 Skill 协作包：把公开消息取证、Binance U 本位永续/股票代币行情结构、纯分析 HTML 报告、账户风控/本地流水、半自动确认式执行拆成多个可独立触发的 Skill，并保留 `crypto-news-selector` 作为完整单 Skill 和共享脚本运行时。适合需要“一键安装整套消息面选币能力”，或希望只单独安装新闻、行情、报告、风控、执行某一环节的场景。
+消息面选币多 Skill 协作包：把公开消息与市场热点取证、Binance U 本位永续/股票代币行情结构、纯分析 HTML 报告、账户风控/本地流水、半自动确认式执行拆成多个可独立触发的 Skill，并保留 `crypto-news-selector` 作为完整单 Skill 和共享脚本运行时。适合需要“一键安装整套消息面选币能力”，或希望只单独安装新闻、行情、报告、风控、执行某一环节的场景。
 
 一键安装完整协作包：
 
@@ -68,7 +97,7 @@ npx skills add xiyueyezibile/xiy-skills@crypto-news-selector -g -y
 
 - `crypto-news-selector-pack`：总控编排，先审计账户/流水，再协调消息、行情、风控和执行
 - `crypto-news-analysis-report`：只组合消息面与公共行情结构，输出不含账户、仓位和下单的逐币 HTML 深度报告；生成后必须在最终回复返回可直接点击打开的 `file://` 链接和 HTML 绝对路径
-- `crypto-news-intel`：公开消息、公告、监管、交易所事件和催化剂质量取证
+- `crypto-news-intel`：公开消息、公告、监管、交易所事件、市场热点、公开传闻增量监控和催化剂质量取证
 - `crypto-market-structure`：Binance 公共行情、1d/4h/1h/15m 结构、ATR 止损和入场触发
 - `crypto-risk-ledger`：`<项目根目录>/.crypto` 本地知识、Binance 私有只读快照、持仓流水对账、数量杠杆和组合风险
 - `crypto-trade-executor`：两阶段确认式执行；只在用户回复精确 `确认执行 TOKEN` 后处理单笔市价开仓和保护单
@@ -79,13 +108,25 @@ npx skills add xiyueyezibile/xiy-skills@crypto-news-selector -g -y
 - 一条安装命令装完整协作包，也支持每个子 Skill 独立安装和独立触发
 - 默认只读，任何真实交易写接口都必须先有账户审计、订单草案和逐单精确确认
 - 筛选顺序固定为“先信息差池、再行情验证”：优先找未来 1–30 天未完全落地的公告、解锁、升级、监管、财报、产品和代币经济节点；涨幅榜、跌幅榜、成交额榜只能作为验证雷达或补漏线索，不能作为核心候选主入口
+- 每轮增加“市场热点参考”：统计 BTC/ETH 环境、涨跌广度、成交额集中度、衍生品环境及主题的 `萌芽/扩散/拥挤/退潮` 阶段，用于补漏、共振、降权和风险聚类；热点不能单独升级候选或替代消息、结构和风险门禁
+- 全市场选币先运行 `crypto-news-selector/scripts/build_universe_catalog.py` 刷新 Binance U 本位完整底池，再扫描全部普通永续和 TradFi 永续；当前快照为 700 个可交易合约，生成清单会随 Binance 上下线自动变化，不能用 `scan --limit 30/40` 代替全量扫描
+- 全量清单写入 `crypto-news-selector/references/binance-usdm-universe.md` 和 `.json`，逐项标注加密币、美股/ETF/ADR、韩股、港股、A 股、商品、Pre-IPO、合约类型、24h 成交额及对应消息渠道网址
+- “全量扫描”不等于“700 个逐币深度分析”：目录和 24h ticker 覆盖完整底池；完成状态、合约类型、稳定币、重复季度合约、流动性和确认下架等机械排除后，剩余每个标的都必须真实访问对应消息渠道并保存逐项审计记录，不能依据已有排期、历史上下文或少量搜索先挑熟悉标的
+- 报告必须分别披露目录、行情初筛、机械过滤幸存、实际消息核验和深度分析数量；逐项审计记录包含实际渠道/URL、查询词、检索时间、最新事件或未发现、状态和原因，数量未闭合时不得宣称完成
+- 所有经逐项核验发现的机会都必须列入报告，不设置 Top-N 或篇幅上限；只有最终交易计划数量继续受账户、相关性和组合风险限制
+- 每个候选和 active 持仓固定展示资产背景：资产类型、一级行业/赛道、细分模块、核心业务/协议用途、主要价格驱动、同风险簇和背景介绍；例如 NVDA 标为“半导体 / AI GPU 与加速计算”、MRVL 标为“半导体 / 定制 ASIC 与数据中心网络互连”、SAMSUNG 标为“半导体与消费电子 / DRAM、NAND 与晶圆代工”，用于识别看似不同标的背后的集中暴露
 - 报告必须拆分 `提前埋伏池` 与 `已启动确认池`：前者要求未来节点明确且未明显抢跑；后者说明消息已被资金部分交易，只能等回踩承接或突破后回踩确认
+- `初步落地` / `基本落地` 不等于淘汰：仍有未完成传导或后续节点时必须进入 `已启动确认池` 继续分析，写明已完成/未完成传导、下一验证节点、二阶段触发、保守目标、失效位、扣费后剩余净盈亏比和行情耗尽信号
+- 额外维护 `传闻观察池`：每次触发先读取 `.crypto/rumor-watch/watchlist.json`，增量核验政策人物、名人品牌、项目生态和认证社媒公开传闻；状态按 `lead -> corroborated -> confirmed` 升级，直接来源冲突、否认或超过窗口则转为 `disputed/rejected/expired`
+- 传闻不会直接变成交易信号：`lead`、`corroborated` 和 `disputed` 固定只观察，只有监管、交易所、项目方或公司等直接来源确认后，才有资格进入核心候选并继续接受行情结构、已定价风险和盈亏比门禁
+- `crypto-news-intel/scripts/rumor_watch.py` 负责跨轮保存、去重、证据合并和过期处理；它只在 Skill、cron 或 Agent 调度器实际调用时运行，没有调度时不会宣称 24 小时后台监控
 - 回复消息面结论时必须逐条带发布时间、事件/生效时间、检索时间、距当前多久、时效性等级和有效窗口；时间不明的消息只能做线索，不能作为核心催化
 - 新闻、行情、风险、执行四类结论分层输出，便于复核某一环节是否缺证据
 - 默认报告交付：用户只说“用 skill 选币 / 帮我选币 / 看消息面机会 / 给观察清单”时，也必须先生成 HTML 报告，再在最终答复最前面给 `[打开 HTML 报告](file:///absolute/path/report.html)` 和 HTML 绝对路径；除非用户明确说不要文件/不要 HTML，不能只给聊天正文
-- 报告格式固定对齐样例 `.tmp/crypto-news-analysis-report/20260822-1035-skill-selection-report.html`：`数据时间` -> `结论摘要` -> `已开仓催化落地跟踪` -> `逐币消息面深度分析` -> `股票代币 / TradFi 合约信息` -> `摘要矩阵` -> `来源列表` -> `声明`；必须通过 `crypto-news-analysis-report/scripts/render_report.py` 生成，不手写其他 HTML 模板
+- 报告采用 v5 固定模板：桌面端左侧目录可跳转到热点、持仓和每个标的；正文顺序为 `数据时间` -> `结论摘要` -> `市场热点参考` -> `风险与落地速览` -> `逐项研究审计` -> `已开仓催化落地跟踪` -> `逐币消息面深度分析` -> `股票代币 / TradFi 合约信息` -> `摘要矩阵` -> `来源列表` -> `声明`；必须通过 `crypto-news-analysis-report/scripts/render_report.py` 生成，不手写其他 HTML 模板
 - 纯分析 HTML 报告生成后，最终答复直接给 `[打开 HTML 报告](file:///absolute/path/report.html)`，避免只给相对路径或口头说明；如果报告生成失败，必须说明失败命令和原因，并给完整 Markdown 版报告兜底
 - 用户声明已经开仓后进入 `position_followup` 持仓跟踪状态：能从只读账户唯一确认的写正式 ledger；缺少方向、入场价、数量时不伪造流水，而是在 `<项目根目录>/.crypto/position-watch/` 建立待补成交细节的跟踪清单，并持续复核相关新闻、未来催化落地/延期/取消、反向消息和关键失效位
+- 用户声明开仓但未提供精确成交价时，默认使用声明时记录的 `observed_price_at_tracking` 作为 `entry`，并标记 `entry_source=user_declared_open_tracking_price`；它是复盘基线，不等同于交易所实际成交回报
 - 跟单、子账户、其他交易所或机器人仓位不一定出现在当前 Binance 主账户 API 快照中；用户未明确说平仓前，`position-watch` 中的 active 跟踪不能因快照无持仓而关闭。后续生成 HTML 报告时必须追加“已开仓催化落地跟踪”区块，展示上次开仓催化当前是否落地
 - 下架、停止开仓、自动结算类题材即使最终盈利，也必须复盘中途最大不利浮动、短挤、流动性和退出纪律；不能把最终盈利反推为入场质量好
 - 网络升级、硬分叉、治理执行、产品发布等事件抢跑仓出现浮盈后，必须提前定义 TP1、移动止损或关键位跌破退出，避免一根阴线把浮盈打回保本
@@ -95,7 +136,10 @@ npx skills add xiyueyezibile/xiy-skills@crypto-news-selector -g -y
 使用示例：
 
 - “用消息面选币协作包，先审计账户，再筛最近 72 小时的 5 个 U 本位候选”
+- “刷新完整合约清单，扫描全部加密币和 TradFi 永续，分别标注美股、韩股、港股、A 股、商品与 Pre-IPO，再按消息面和结构筛选”
 - “先找未来 1–30 天未落地的信息差事件，再用成交额和 1d/4h/1h/15m 结构验证，不要先按涨幅榜倒推”
+- “选币时增加市场热点分析，说明主题处于萌芽、扩散、拥挤还是退潮，但热点只作参考”
+- “监控政策人物、名人项目和认证社媒的公开传闻做选币；未确认的只进传闻观察池，官方确认后再升级”
 - “只分析不看仓位和开仓，结合消息面和行情结构整理一份 HTML 报告”
 - “只跑 news-intel，帮我查 OP 最近一个月有没有持续催化”
 - “只跑 market-structure，分析 BTC/ETH/SOL 现在有没有市价或近价限价结构”
@@ -104,7 +148,7 @@ npx skills add xiyueyezibile/xiy-skills@crypto-news-selector -g -y
 
 ### crypto-news-analysis-report
 
-消息面选币纯分析报告 Skill：只组合 `crypto-news-intel` 和 `crypto-market-structure`，用于基于公开消息与 Binance U 本位公共行情做候选分析，并整理成可本地打开的 HTML 报告；不读取账户、不看仓位、不计算个人仓位、不生成订单草案、不调用任何交易写接口。
+消息面选币纯分析报告 Skill：只组合 `crypto-news-intel` 和 `crypto-market-structure`，用于基于公开消息、市场热点与 Binance U 本位公共行情做候选分析，并整理成可本地打开的 HTML 报告；不读取账户、不看仓位、不计算个人仓位、不生成订单草案、不调用任何交易写接口。
 
 ```bash
 npx skills add xiyueyezibile/xiy-skills@crypto-news-analysis-report -g -y
@@ -120,17 +164,28 @@ npx skills add xiyueyezibile/xiy-skills -g -y --skill crypto-news-analysis-repor
 
 - 只使用公开新闻、公告和 Binance 公共行情，适合“只分析不交易”的场景
 - 新增新浪财经公开新闻源脚本 `scripts/sina_finance_news.py`，可按关键词从财经、股票、美股、港股、行业滚动新闻中补充中文消息
+- 全市场报告固定以 24h 成交额 `>= 1000 万 USDT` 为流动性门槛；payload 必须保存完整 `liquidity_survivors` 明细并与 `research_audit` 逐币匹配，通过门槛的全部标的都必须逐项真实取证并完成 1d/4h/1h/15m 分析，集合或计数不一致时渲染器拒绝生成报告
+- 每条逐项审计必须给出标准化追进去风险与消息/结构分析摘要；风险为 `低/中低/中/中高` 的全部标的必须进入候选矩阵和逐币深度章节，遗漏任一标的时渲染器拒绝生成报告；`高/极高` 标的可只保留在审计表
 - 强制每条消息写明发布时间、事件/生效时间、检索时间、距当前多久、时效性等级和有效窗口
 - 默认先找信息差再看行情：未落地未来节点优先，Binance 涨跌幅/成交额榜只用于确认流动性、判断是否已抢跑和发现补漏候选；不得先看榜单再倒推泛泛消息
+- 增加跨报告新颖性控制：新候选默认冷却最近 3 份报告或 72 小时，同一催化 7 天内重复只保留二阶段跟踪；最近 5 份报告的重复出现会累计 `repeat_penalty`，重复标的不得用于填充提前埋伏池
+- 报告区分 `新候选`、`深度观察`、`冷却中`、`重复观察` 和 `active 持仓跟踪`；active 持仓只进入跟踪区，不重新包装成新候选。每个重复标的记录 `repeat_count`、`repeat_penalty`、`prior_reports`、`cooldown_until` 和 `selection_reason`
+- 新增独立“市场热点参考”区块：展示市场状态、涨跌广度、成交额集中度、衍生品环境、主题阶段与拥挤风险；热点用于补漏和风险聚类，不能单独触发候选或开仓
+- 支持公开传闻增量监控：读取 `.crypto/rumor-watch/watchlist.json`，按来源层级记录首次发现、最后核验、支持/否认证据、价格触发、失效条件和复核时间；未获直接来源确认时只能放入“传闻观察池”
 - 用 `crypto-news-intel` 判断催化剂质量与已定价风险，用 `crypto-market-structure` 判断 1d/4h/1h/15m 结构
 - 支持股票代币 / TradFi perpetual 专用流程：区分底层股票公司消息和 Binance 合约/交易工具消息，标注底层资产、股票市场、`TRADIFI_PERPETUAL` 合约类型、交易时段错位和消息传导路径
 - 可选接入 `finviz-screener` 作为美股候选池辅助，但主驱动仍是消息面；FinViz 的主题、财务或技术过滤结果不能替代新闻/公告催化
 - 风险标签必须按用户执行语义校准：`低` / `中低` / `中` 会被用户视为高概率开仓信号；若消息只是财报前预期、分析师观点、媒体解读、主题扩散，或还在“等突破/等回踩承接/可继续跟踪”阶段，`追进去风险` 至少写 `中高`，并把操作倾向写成 `等触发` 或 `只观察`
+- 逐币新闻解释必须有深度：每个核心标的都要写清新闻事实、原始来源可靠性、关键数字、利多/利空因果链、反向解释、落地/定价证据和后续验证点；股票代币必须额外拆分底层公司消息、Binance 合约工具消息和正股交易时段确认，不能只给标题式结论
+- 新报告必须设置 `meta.report_contract="v5"` 并提供 `market_hotspots`；每个逐币和持仓条目必须通过 `news_evidence` 或 `source_refs` 绑定原始消息，章节内直接展示可点击来源、来源层级、可靠性、发布时间、事件时间、检索时间和关键事实，缺失时渲染器拒绝生成；历史 v4 payload 仍可重渲染
+- 逐币章节和已开仓跟踪区块在新闻之前展示资产画像：资产类型、行业/赛道、细分模块、核心业务/协议、价格驱动、同风险簇与背景介绍；摘要矩阵和 TradFi 信息表同步展示行业、细分模块和风险簇，字段缺失时渲染器拒绝生成报告
+- 用户在对话中声明“已开”“新开了”“按上一份报告开了”的标的必须进入 active 跟踪；若缺方向、入场价或数量，也要在 `.crypto/position-watch/` 记录待补字段，并在后续 HTML 报告的“已开仓催化落地跟踪”区块展示，不能只作为新候选
 - 支持 `pre_landing` 未落地催化埋伏模式：当用户要求“未落地之前的消息”“提前埋伏”“未来催化”时，只把未来 1–30 天有明确节点、尚未完全兑现且有复核时间的事件作为核心候选；已完成且没有下一阶段的新闻只作背景，不冒充埋伏机会
+- 已经初步/基本落地但尚未完全兑现的消息不会停止分析：统一转入 `已启动确认池`，只有效应已充分兑现且没有后续路径，或扣费后剩余净盈亏比 `<= 1`，才允许淘汰
 - 支持把 B 站等二级内容作为方法论学习来源：只沉淀可验证的视频元数据、简介要点和选币方法，不把 UP 主观点、标题或评论区当作交易核心事实；所有候选仍需回到官方公告、交易所公告、链上数据、公司财报/IR 或监管文件验证
 - 候选只标注 `可继续跟踪`、`等触发`、`只观察`、`淘汰`，不输出账户相关数量和杠杆
 - 报告中的“落地”指利好/利空效应是否已经通过供需、基本面、价格结构、成交量/OI/资金费率或交易限制兑现，不是事件本身是否发生；事件排期或完成状态应单独写在 `事件/生效时间`、`未来催化节点`、`当前阶段`
-- 随包提供 `scripts/render_report.py`，把结构化分析结果渲染为 `.tmp/crypto-news-analysis-report/<timestamp>-skill-selection-report.html`；报告主体按“单个币一章”写，且每章开头突出 `方向判断`、`利好/利空落地`、`追进去风险`、`操作倾向`，再解释消息是什么、为什么利多/利空、是否已定价和后续观察点，不用候选列表替代分析；HTML 结构固定对齐 `.tmp/crypto-news-analysis-report/20260822-1035-skill-selection-report.html`
+- 随包提供 `scripts/render_report.py`，把结构化分析结果渲染为 `.tmp/crypto-news-analysis-report/<timestamp>-skill-selection-report.html`；摘要后先给“市场热点参考”，再给红黄绿“风险与落地速览”，已开仓标的置顶展示风险、失效位和当前动作；正文按“单个币一章”写，每章开头突出 `方向判断`、`利好/利空落地`、`追进去风险`、`操作倾向`，再展示消息依据和完整传导分析
 - 报告交付是硬门禁：只要已经产出选币、候选、观察清单或逐币分析结论，就必须先生成 HTML 文件并确认存在；最终回复第一屏必须返回可直接点击打开的 Markdown 链接，例如 `[打开 HTML 报告](file:///Users/you/project/.tmp/crypto-news-analysis-report/20260821-2336-report.html)`，并同时列出 HTML 绝对路径，不能只写“报告已生成”
 - 只有用户明确说“不要报告 / 不要 HTML / 只在聊天里给简版”，或渲染脚本/文件系统实际失败时，才允许不返回 HTML；失败时必须用“报告生成失败”说明命令、错误原因和已完成数据范围，并给完整 Markdown 版报告兜底
 
@@ -138,10 +193,12 @@ npx skills add xiyueyezibile/xiy-skills -g -y --skill crypto-news-analysis-repor
 
 - “只分析不看仓位，帮我把最近 72 小时消息面机会做成 HTML 报告”
 - “用 skill 帮我选币”（默认也会返回 HTML 报告）
+- “结合市场热点做选币参考，区分主题扩散和已经拥挤的追涨风险”
 - “结合 news-intel 和 market-structure，整理 BTC/ETH/SOL/XRP 的消息和结构报告”
 - “只看 Binance 股票代币，分析 UNITREE/KUAISHOU/CXMT 的底层公司消息和合约结构，出 HTML 报告”
 - “不要调用账户接口，只给公开信息和行情结构，输出 HTML”
 - “找未落地之前的消息去埋伏，只要未来催化和提前布局条件，出 HTML 报告”
+- “把 TRUMP、ZEC 这类政策人物/ETF/认证社媒传闻加入观察池，持续核验来源，确认前不要给开仓结论”
 
 ### crypto-news-selector
 
@@ -151,12 +208,23 @@ npx skills add xiyueyezibile/xiy-skills -g -y --skill crypto-news-analysis-repor
 npx skills add xiyueyezibile/xiy-skills@crypto-news-selector -g -y
 ```
 
+该安装会同时包含全量目录生成器以及当前 Binance U 本位合约 Markdown/JSON 快照，无需单独下载清单。
+
 功能特性：
 
 - 先查项目方、交易所、监管机构、公司 IR/财报等公开消息建立信息差候选池，再用 1d / 4h / 1h / 15m 技术结构确认是否已被市场定价；涨跌幅榜和成交额榜只做行情雷达，不做核心候选主入口
-- 每轮区分 `提前埋伏池` 和 `已启动确认池`，避免把已经涨跌幅前列、利好利空部分落地的币误写成提前埋伏
+- 用户要求“埋伏/启动前”时强制使用事件优先漏斗：先扫描未来 `7–30` 天一手排期，再映射 Binance 合约、排除已有仓位和已抢跑标的，最后才做四周期结构与盈亏比验证；报告披露事件总数、可交易事件数、未启动事件数和可埋伏数
+- `提前埋伏池` 默认要求 24h 绝对涨跌幅 `< 5%`、相对事件公开前基准区累计偏离 `< 10%`、未出现日线/4h 放量扩张或短周期拥挤，并且结构失效位近、扣费后保守净盈亏比 `> 1`；不合格时宁可明确“当前无可埋伏标的”，不能用已启动热点填充
+- 报告主次顺序固定为 `提前埋伏池 -> 待回踩埋伏池 -> 已启动确认池 -> 传闻观察池 -> 全市场审计附录`；已启动对象不能冒充提前埋伏，但必须保留二阶段分析，满足触发和剩余净盈亏比门禁时仍可进入候选
+- `已启动确认池` 不只是淘汰说明区：利好/利空初步或基本落地但仍有剩余空间的标的必须继续完成四周期、衍生品和净盈亏比分析；二阶段触发确认且剩余净盈亏比 `> 1` 时仍可成为候选
+- 跨报告重复控制：最近 3 份报告或 72 小时内出现过的新候选默认进入冷却；最近 5 份报告重复出现累计惩罚，同一催化 7 天内不得重复作为核心候选。没有合格新标的时明确写“本轮无合格新候选”，不使用旧币凑数
+- 同步分析市场热点：记录 BTC/ETH 环境、涨跌广度、成交额集中度、衍生品环境和主题阶段，用于补漏、判断共振与识别同风险簇拥挤，不把热度本身当作开仓理由
+- 每轮区分 `提前埋伏池`、`已启动确认池` 和 `传闻观察池`，避免把已经涨跌幅前列、利好利空部分落地的币误写成提前埋伏，也避免把未经确认的传闻写成事实
+- 每次触发增量核验公开传闻状态；`lead/corroborated` 只观察，监管、交易所、项目方或公司直接确认后才允许升级为普通消息面候选
 - 新增独立 `medium_long` 中长线轨道：1d 定趋势、4h 建结构、1h 择时，默认持有 3–21 天，使用更宽结构止损、更小数量和 2x–4x 低杠杆，并与短篮子分开复盘
 - 内置 Binance 公共只读行情脚本，无需 API Key，可获取永续合约列表、24h 行情和多周期 K 线指标
+- 内置全市场目录生成器 `scripts/build_universe_catalog.py`：从 Binance 公共接口刷新全部 U 本位可交易合约，并生成 `references/binance-usdm-universe.md/.json`；每个合约都带市场类型和消息源路由，全市场扫描不再依赖涨跌榜 Top-N
+- 默认把普通加密永续与 TradFi 永续一起纳入筛选，显式区分加密币、美股/ETF/ADR、韩股、港股、A 股、商品和 Pre-IPO；季度合约只进入覆盖审计，不与同底层永续重复推荐
 - 支持已触发后的市价入场，以及距离最新价不超过 `min(0.5%, 0.25×15m ATR)` 的结构近价限价单；限价单默认 30 分钟失效并要求重新分析
 - 支持 8–15 币的全仓篮子探索模式：2–4 个核心仓搭配多个小风险侦察仓，用少数高收益尾部机会覆盖小额止损并积累可复盘样本
 - 篮子按批次记录 `batch-id`、核心/侦察层级、叙事桶和风险贡献，并统计前 20% 盈利贡献、相关止损与费用占比
@@ -176,14 +244,27 @@ npx skills add xiyueyezibile/xiy-skills@crypto-news-selector -g -y
 - 自动下单检测单/双向持仓模式、交易规则、同币已有仓位和最小名义金额；止损保护失败会尝试紧急 reduce-only 平仓，超时或未知订单状态不会自动重试
 - 每次触发 Skill 都自动对比 Binance 当前持仓、差异币种的近期成交与 `<项目根目录>/.crypto` 未平仓流水，主动发现漏记开仓、加减仓和疑似平仓；能唯一重建时补记并复盘，存在歧义时才询问最少信息
 - `<项目根目录>/.crypto/llm-wiki` 保存用户提供的学习资料、已验证优势、重复坑位和条件式规则；每次建议前必须读取
+- `<项目根目录>/.crypto/rumor-watch/watchlist.json` 保存跨轮传闻观察项；该能力需要实际触发 Skill 或配置外部 cron/Agent 调度，不是默认常驻后台进程
 - 用户确认实际开仓时追加开仓记录，并把消息催化、技术与衍生品确认、仓位杠杆依据、止盈止损、净盈亏比、失效条件、置信度、数据截止时间和来源完整嵌入流水，保证换对话后仍可按原始理由复盘
 - 用户确认全部平仓后计算结果、复盘盈亏归因，并将可迁移经验沉淀进 LLM Wiki
+
+刷新并查看完整底池：
+
+```bash
+python3 skills/crypto-news-selector/scripts/build_universe_catalog.py
+```
+
+生成文件：
+
+- `skills/crypto-news-selector/references/binance-usdm-universe.md`：人工可读列表和逐类型消息渠道链接
+- `skills/crypto-news-selector/references/binance-usdm-universe.json`：供后续消息检索、流动性过滤和报告覆盖审计使用
 - 自动市价执行支持 1–3 级动态数量止盈与剩余仓位整仓止损；各级数量由目标确定性和趋势空间决定，不写死比例。近价限价、加仓、反手和移动止损仍由用户自行完成
 
 使用示例：
 
 - “结合最近 72 小时消息，选 3 个适合关注的 U 本位合约币种”
 - “优先给我提前埋伏池，再给已启动确认池；涨跌幅榜只做补充验证”
+- “选币时把当前市场热点和退潮主题也列出来作参考，但不要因为热门就追”
 - “分析 BTC、ETH 和 SOL；如果现在满足条件，按我的账户余额给出市价开仓数量、逐仓杠杆与止盈止损”
 - “最近有什么消息驱动的做空机会？先检查消息是否已被定价”
 - “按月收益 100%+ 的进攻目标筛选，但严格执行回撤闸门；如果没有合格机会就观望”
@@ -285,6 +366,40 @@ rsync -a --delete internal-skills/lightweight-cdp-screenshot/ ~/.trae-cn/skills/
 - 默认拦截 `undefined`、`NaN` 等明显 Mock 失真文本
 - 保留高清源图，不为了展示尺寸先降采样
 - 输出 `manifest.json` 记录 URL、文件、viewport、DPR、PNG 尺寸和 ready 证据
+
+### mobile-page-state-mock-screenshot（internal）
+
+移动端页面全状态 Mock 截图 Skill：先从生产代码分析 loading/content/empty/error、按钮可用/禁用、深浅氛围、组件显隐、浮层开关等视觉状态及其依赖与互斥关系，再在真实业务页面中逐态 Mock；使用带约束的状态覆盖集避免拼出线上不可能存在的组合，并统一调用 `lightweight-cdp-screenshot` 输出高 DPR 截图。
+
+本仓库内置路径：
+
+```bash
+internal-skills/mobile-page-state-mock-screenshot
+```
+
+同步到 Trae：
+
+```bash
+rsync -a --delete internal-skills/mobile-page-state-mock-screenshot/ ~/.trae-cn/skills/mobile-page-state-mock-screenshot/
+```
+
+功能特性：
+
+- 只适用于 `fe-alliance-mobile` 和 `alliance-mobile-mono`，并保留目标组件的真实页面外壳与业务打开链路
+- 从条件渲染、store/reducer、请求分支、props、主题、权限、实验和按钮 `disabled` 表达式收集状态证据
+- 用 `state-model.json` 表达状态维度、依赖、互斥、强制截图场景和待确认关系；证据不足的组合不会进入截图计划
+- 随包提供 `scripts/state_matrix.py`，枚举合法组合并生成覆盖每个合法状态值、每对可共存状态值和高风险强制场景的精简截图集
+- 视觉完全相同的状态可合并，但必须记录代码证据；存在三维以上联动时用 `must_capture` 显式覆盖
+- 每个场景只在真实数据/环境边界做最小 Mock，不新增 demo 页、孤立组件页或私有 URL 参数
+- 截图强制复用 `lightweight-cdp-screenshot`：独立 CDP page、串行执行、默认 `390×844` CSS viewport、DPR `3`、高 DPR PNG 和 manifest 校验
+- 逐图检查互斥状态串图、主题/按钮/组件显隐一致性、裁切遮挡、破图和 Mock 数据语义
+- 状态证据、模型、计划、截图和报告保存在 `~/.mobile-page-state-mock/`，不污染业务仓库
+
+使用示例：
+
+- “分析这个移动端列表页的所有状态，合法组合都 mock 并截图”
+- “把空态、加载态、展示态、错误态和按钮禁用态都截出来，但代码没有的状态不要编造”
+- “顶部有深浅两种氛围，卡片也可能显示或隐藏，先梳理哪些能共存再批量截图”
 
 ### mock-video-verification（internal）
 
