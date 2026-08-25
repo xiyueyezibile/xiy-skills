@@ -15,6 +15,8 @@ from typing import Sequence
 CONFIG_PATH = Path.home() / ".xiy" / "config.json"
 CODEX_HOOKS_PATH = Path.home() / ".codex" / "hooks.json"
 HOOK_SCRIPT = Path(__file__).resolve().parent / "xiy_llm_wiki_hook.py"
+RECORD_CATEGORIES = ("context", "decision", "rule", "pitfall", "source")
+MAX_BATCH_RECORDS = 10
 
 
 @dataclass(frozen=True)
@@ -414,31 +416,79 @@ def sync(
     print(f"已提交并 push：{message}")
 
 
-def record_command(args: argparse.Namespace) -> None:
-    config = load_config()
-    source = current_source()
+def record_items(
+    config: dict[str, object],
+    source: Snapshot,
+    items: Sequence[tuple[str, str]],
+) -> None:
+    if not items:
+        print("没有可记录的新知识。")
+        return
     wiki = pull_latest(config)
     now = datetime.now().astimezone()
-    category = args.category
-    entry = wiki / "wiki" / category / f"{now:%Y-%m-%d}.md"
-    entry.parent.mkdir(parents=True, exist_ok=True)
-    with entry.open("a", encoding="utf-8") as handle:
-        handle.write(
-            f"\n## {now:%H:%M}｜{category}\n\n"
-            f"- 当前工作：{source.summary}\n"
-            f"- 业务仓库：`{source.repo_name}`\n"
-            f"- 记录：{args.note.strip()}\n"
-        )
+    for category, note in items:
+        entry = wiki / "wiki" / category / f"{now:%Y-%m-%d}.md"
+        entry.parent.mkdir(parents=True, exist_ok=True)
+        with entry.open("a", encoding="utf-8") as handle:
+            handle.write(
+                f"\n## {now:%H:%M:%S}｜{category}\n\n"
+                f"- 当前工作：{source.summary}\n"
+                f"- 业务仓库：`{source.repo_name}`\n"
+                f"- 记录：{note}\n"
+            )
     (wiki / "wiki/current-work.md").write_text(
         current_work_markdown(source), encoding="utf-8"
     )
     with (wiki / "log.md").open("a", encoding="utf-8") as handle:
+        categories = ",".join(dict.fromkeys(category for category, _ in items))
+        operation = "record" if len(items) == 1 else "record-batch"
         handle.write(
-            f"\n- {now.isoformat(timespec='seconds')}｜record｜"
-            f"{source.repo_name}｜{category}\n"
+            f"\n- {now.isoformat(timespec='seconds')}｜{operation}｜"
+            f"{source.repo_name}｜count={len(items)}｜categories={categories}\n"
         )
     update_index(wiki)
     sync(config, source, already_pulled=True)
+
+
+def record_command(args: argparse.Namespace) -> None:
+    record_items(
+        load_config(),
+        current_source(),
+        [(args.category, args.note.strip())],
+    )
+
+
+def record_batch_command(args: argparse.Namespace) -> None:
+    try:
+        raw = sys.stdin.read() if args.json_file == "-" else Path(args.json_file).read_text(
+            encoding="utf-8"
+        )
+        payload = json.loads(raw)
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError("批量记录 JSON 无法读取或格式错误") from error
+    values = payload.get("items") if isinstance(payload, dict) else None
+    if not isinstance(values, list) or not values:
+        raise RuntimeError("批量记录必须包含非空 items 数组")
+    if len(values) > MAX_BATCH_RECORDS:
+        raise RuntimeError(f"批量记录最多允许 {MAX_BATCH_RECORDS} 条")
+    items: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for value in values:
+        if not isinstance(value, dict):
+            raise RuntimeError("批量记录的每一项必须是对象")
+        category = value.get("category")
+        note = value.get("note")
+        if category not in RECORD_CATEGORIES:
+            raise RuntimeError(f"不支持的知识分类：{category}")
+        if not isinstance(note, str) or not note.strip():
+            raise RuntimeError("批量记录的 note 不能为空")
+        if len(note) > 8000:
+            raise RuntimeError("批量记录的单条 note 不能超过 8000 字符")
+        normalized = (category, note.strip())
+        if normalized not in seen:
+            seen.add(normalized)
+            items.append(normalized)
+    record_items(load_config(), current_source(), items)
 
 
 def update_index(wiki: Path) -> None:
@@ -489,9 +539,11 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("link")
     sub.add_parser("status")
     record = sub.add_parser("record")
-    record.add_argument("--category", choices=("context", "decision", "rule", "pitfall", "source"),
+    record.add_argument("--category", choices=RECORD_CATEGORIES,
                         default="context")
     record.add_argument("--note", required=True)
+    record_batch = sub.add_parser("record-batch", help=argparse.SUPPRESS)
+    record_batch.add_argument("--json-file", required=True)
     sub.add_parser("sync")
     watch = sub.add_parser("watch", help="配置当前仓库的会话监听")
     watch.add_argument("--repo")
@@ -518,6 +570,8 @@ def main() -> int:
             if not args.note.strip():
                 raise RuntimeError("--note 不能为空")
             record_command(args)
+        elif args.command == "record-batch":
+            record_batch_command(args)
         elif args.command == "sync":
             config = load_config()
             sync(config, current_source())

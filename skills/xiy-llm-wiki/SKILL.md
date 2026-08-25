@@ -24,7 +24,7 @@ LLM Wiki 的核心不是原文归档，而是把用户提供的资料、对话�
 - 用户明确要求同步时，调用 `sync`；`record` 成功后也会自动执行同样的同步。
 - 用户明确要求监听指定仓库的会话时，先配置 `watch --action extract`，再安装 Codex hooks。
 
-`extract` 只会记录新出现的、可验证的结论、决策、规则、踩坑或资料摘要；不得记录普通进度、一次性实现细节、未经确认的推测或敏感信息。没有新内容时不写入。
+`extract` 会记录新出现且可验证的可复用知识，不只限于最终结论：还应覆盖稳定的业务术语与对象关系、仓库/模块职责、页面和数据链路、接口契约、状态流转、边界条件，以及本轮实际读取并影响结论的 PRD、技术方案、接口文档和其他资料摘要。资料只保存标题或可复查引用、用途、支持的关键事实和已知版本/时间，不复制大段原文；仅被提到但未实际读取的资料不记录。普通进度、一次性实现流水、未经确认的推测或敏感信息仍须过滤。没有新内容时不写入。
 
 ## 配置与仓库关联
 
@@ -114,11 +114,11 @@ python3 scripts/llm_wiki.py hooks install
 
 只有用户明确要求记录时才能执行。要求提供非空 `--note`，可选 `--category`：
 
-- `context`：仓库或业务上下文
+- `context`：仓库职责、业务术语、对象关系、页面/数据链路、接口契约、状态流转和其他稳定上下文
 - `decision`：已确认决策
 - `rule`：可复用规则
 - `pitfall`：踩坑或纠错
-- `source`：外部资料摘要
+- `source`：本轮实际使用的文档或资料摘要，包含可复查引用、用途、关键事实及版本/时间
 
 记录时更新 `wiki/<category>/YYYY-MM-DD.md`、`wiki/index.md`、`wiki/current-work.md` 和 `log.md`。必要时把原始资料保存到 `raw/`，但不保存 token、cookie、密钥、隐私或大段受版权保护的原文。
 
@@ -139,6 +139,8 @@ git push <remote> HEAD:<current-branch>
 ## Wiki 维护原则
 
 - Wiki 页面是编译后的知识，不是聊天记录转储。
+- 业务上下文是正式知识：稳定术语、角色关系、模块职责、链路、接口和边界条件应进入 `context`，不能只记录最终决策。
+- 实际影响结论的文档应进入 `source`，记录来源、用途和事实摘要；不要把“读取过某文档”本身当成知识，也不要复制大段原文。
 - 每条知识尽量包含结论、依据、适用条件、反例或不确定性。
 - 页面之间使用相对 Markdown 链接交叉引用。
 - `wiki/index.md` 是全局目录，`log.md` 是 ingest、query、maintenance 和 sync 的时间日志。
@@ -181,7 +183,7 @@ python3 /path/to/xiy-llm-wiki/scripts/llm_wiki.py hooks install --path ~/.trae-c
 }
 ```
 
-`action=extract` 是默认值：Codex 的 `Stop` hook 会把本轮 transcript 交给独立的只读 Codex 进程，在后台对照现有 Wiki 提炼最多 5 条新知识；当前任务不被阻止结束，提炼提示和结果也不会显示给用户。后台进程本身不能修改文件，只有提炼结果通过严格结构校验后，才由 `record` 写入并自动 pull、commit、push。后台状态只记录到 `~/.xiy/session-watch.log`，日志不包含 transcript 或笔记正文。`action=status` 只拉取 Wiki 并输出状态，不写入；`action=sync` 会在匹配事件发生时执行 Wiki 同步并可能 commit/push。停用监听：
+`action=extract` 是默认值：Codex 的 `Stop` hook 会把本轮 transcript 交给独立的只读 Codex 进程，在后台对照现有 Wiki 提炼最多 10 条新知识。每条结果都包含标题、摘要、事实依据、来源引用和适用范围；业务上下文与实际使用的文档摘要会和决策、规则、踩坑一起进入候选。当前任务不被阻止结束，提炼提示和结果也不会显示给用户。后台进程本身不能修改文件，只有结果通过严格结构与敏感信息校验后，才由内部批量记录入口一次性写入，并统一 pull、commit、push，避免一场会话产生多个零散提交。后台状态只记录到 `~/.xiy/session-watch.log`，日志不包含 transcript 或笔记正文。`action=status` 只拉取 Wiki 并输出状态，不写入；`action=sync` 会在匹配事件发生时执行 Wiki 同步并可能 commit/push。停用监听：
 
 ```bash
 python3 /path/to/xiy-llm-wiki/scripts/llm_wiki.py watch --disable
