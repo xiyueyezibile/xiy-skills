@@ -40,6 +40,8 @@ Skill 包内同时提供 [机器人 Agent 能力配置](skills/xiy-llm-wiki/agen
 
 支持按仓库配置 Codex/Trae 会话监听：运行 `watch --action extract` 配置目标仓库，再运行 `hooks install` 安装命令型 hooks。安装 Codex hooks 后需要重启 Codex，或启动一次普通交互式 `codex` 完成新增 hook 的信任登记；已打开的任务不会热加载。`extract` 会在 Codex 会话结束时启动独立的只读 Codex 进程，静默提取有依据、可复用的结论、决策、规则和踩坑，不向用户展示收尾提示或续跑当前任务；它会过滤普通进度、推测与敏感信息，仅在有新内容且通过结构校验时调用 `record` 写入 Wiki，并自动 commit + push。`status` 是只读模式，`sync` 是每个匹配事件自动同步模式。Trae 还需分别传入 `--path ~/.trae/hooks.json` 与 `--path ~/.trae-cn/hooks.json` 安装 hooks。
 
+`wiki/current-work.md` 会记录结构化工作现场：仓库路径、分支与 HEAD、upstream 领先/落后关系、暂存/未暂存/未跟踪文件、改动范围与规模，以及最近 3 次提交；摘要只归纳 Git 可验证事实，不根据文件名脑补业务目标。
+
 ### find skills
 
 ```bash

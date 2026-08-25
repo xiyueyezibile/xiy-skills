@@ -23,19 +23,51 @@ class Snapshot:
     repo_name: str
     branch: str
     head: str
+    upstream: str
+    ahead: int
+    behind: int
     recent_commit: str
+    recent_commits: tuple[str, ...]
     changed_files: tuple[str, ...]
+    staged_files: tuple[str, ...]
+    unstaged_files: tuple[str, ...]
+    untracked_files: tuple[str, ...]
+    changed_areas: tuple[str, ...]
+    diff_stat: str
+
+    @property
+    def sync_summary(self) -> str:
+        if not self.upstream:
+            return "未配置 upstream"
+        if self.ahead == 0 and self.behind == 0:
+            return f"与 `{self.upstream}` 同步"
+        return f"相对 `{self.upstream}` 领先 {self.ahead}、落后 {self.behind} 个提交"
 
     @property
     def summary(self) -> str:
         if self.changed_files:
-            return f"正在处理 {len(self.changed_files)} 个未提交文件的改动"
+            areas = "、".join(f"`{item}`" for item in self.changed_areas)
+            focus = f"，主要集中在 {areas}" if areas else ""
+            stat = f"；已跟踪改动规模为 {self.diff_stat}" if self.diff_stat else ""
+            return (
+                f"工作区共有 {len(self.changed_files)} 个改动文件"
+                f"（暂存 {len(self.staged_files)}、未暂存 {len(self.unstaged_files)}、"
+                f"未跟踪 {len(self.untracked_files)}）{focus}{stat}。{self.sync_summary}。"
+            )
         if self.recent_commit:
-            return f"当前工作聚焦于最近提交：{self.recent_commit}"
-        return "正在处理未命名改动"
+            return (
+                f"工作区干净。{self.sync_summary}。"
+                f"最近可确认的工作落点是提交“{self.recent_commit}”。"
+            )
+        return f"工作区干净。{self.sync_summary}。Git 中没有足够事实确认具体工作目标。"
 
 
-def git(root: Path, args: Sequence[str], check: bool = True) -> str:
+def git(
+    root: Path,
+    args: Sequence[str],
+    check: bool = True,
+    strip: bool = True,
+) -> str:
     result = subprocess.run(
         ["git", "-C", str(root), *args],
         check=False,
@@ -44,7 +76,9 @@ def git(root: Path, args: Sequence[str], check: bool = True) -> str:
     )
     if check and result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or "git 命令执行失败")
-    return result.stdout.strip()
+    if strip:
+        return result.stdout.strip()
+    return result.stdout.rstrip("\r\n")
 
 
 def git_root(path: Path) -> Path:
@@ -56,20 +90,62 @@ def git_root(path: Path) -> Path:
 
 def snapshot(root: Path) -> Snapshot:
     head = git(root, ["rev-parse", "--short", "HEAD"], check=False) or "(no commit)"
-    status = git(root, ["status", "--short"], check=False)
-    changed = tuple(
-        line[3:] for line in status.splitlines() if len(line) >= 4
+    status = git(root, ["status", "--porcelain=v1"], check=False, strip=False)
+    status_lines = tuple(line for line in status.splitlines() if len(line) >= 4)
+    changed = tuple(line[3:] for line in status_lines)
+    staged = tuple(
+        line[3:] for line in status_lines
+        if not line.startswith("??") and line[0] != " "
     )
+    unstaged = tuple(
+        line[3:] for line in status_lines
+        if not line.startswith("??") and line[1] != " "
+    )
+    untracked = tuple(line[3:] for line in status_lines if line.startswith("??"))
+    changed_areas = tuple(dict.fromkeys(
+        (path.rsplit(" -> ", 1)[-1].split("/", 1)[0] or ".")
+        for path in changed
+    ))[:8]
+    upstream = git(
+        root,
+        ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
+        check=False,
+    )
+    ahead = behind = 0
+    if upstream:
+        counts = git(
+            root,
+            ["rev-list", "--left-right", "--count", f"HEAD...{upstream}"],
+            check=False,
+        ).split()
+        if len(counts) == 2 and all(item.isdigit() for item in counts):
+            ahead, behind = (int(item) for item in counts)
+    recent_commits = tuple(filter(None, git(
+        root,
+        ["log", "-3", "--date=short", "--pretty=format:%h%x09%ad%x09%s"],
+        check=False,
+    ).splitlines())) if head != "(no commit)" else ()
     return Snapshot(
         root=root,
         repo_name=root.name,
         branch=git(root, ["branch", "--show-current"], check=False)
         or "(detached HEAD)",
         head=head,
+        upstream=upstream,
+        ahead=ahead,
+        behind=behind,
         recent_commit=git(root, ["log", "-1", "--pretty=%s"], check=False)
         if head != "(no commit)"
         else "",
+        recent_commits=recent_commits,
         changed_files=changed,
+        staged_files=staged,
+        unstaged_files=unstaged,
+        untracked_files=untracked,
+        changed_areas=changed_areas,
+        diff_stat=git(root, ["diff", "HEAD", "--shortstat"], check=False)
+        if head != "(no commit)"
+        else "",
     )
 
 
@@ -129,17 +205,45 @@ def current_source() -> Snapshot:
 
 
 def current_work_markdown(source: Snapshot) -> str:
-    files = "\n".join(f"- `{item}`" for item in source.changed_files)
+    def file_list(items: tuple[str, ...]) -> str:
+        return "\n".join(f"- `{item}`" for item in items) or "- 无"
+
+    commits = []
+    for item in source.recent_commits:
+        parts = item.split("\t", 2)
+        if len(parts) == 3:
+            commits.append(f"- `{parts[0]}`（{parts[1]}）{parts[2]}")
+        else:
+            commits.append(f"- {item}")
+    areas = "、".join(f"`{item}`" for item in source.changed_areas) or "无"
+    commits_text = "\n".join(commits) or "- 无"
     return (
         "# 当前工作\n\n"
         f"- 识别时间：{datetime.now().astimezone().isoformat(timespec='seconds')}\n"
         f"- 业务仓库：`{source.repo_name}`\n"
+        f"- 仓库路径：`{source.root}`\n"
         f"- 分支：`{source.branch}`\n"
         f"- HEAD：`{source.head}`\n"
-        f"- 工作摘要：{source.summary}\n"
-        f"- 最近提交：{source.recent_commit or '无'}\n\n"
-        "## 未提交文件\n\n"
-        f"{files or '- 无未提交文件'}\n"
+        f"- Upstream：`{source.upstream or '未配置'}`\n"
+        f"- 同步关系：{source.sync_summary}\n\n"
+        "## 工作摘要\n\n"
+        f"{source.summary}\n\n"
+        "## 改动概览\n\n"
+        f"- 改动文件：{len(source.changed_files)} 个\n"
+        f"- 暂存 / 未暂存 / 未跟踪：{len(source.staged_files)} / "
+        f"{len(source.unstaged_files)} / {len(source.untracked_files)}\n"
+        "- 分类说明：同一文件可能同时包含已暂存和未暂存改动\n"
+        f"- 改动范围：{areas}\n"
+        f"- 已跟踪改动规模：{source.diff_stat or '无'}\n\n"
+        "## 改动文件\n\n"
+        "### 已暂存\n\n"
+        f"{file_list(source.staged_files)}\n\n"
+        "### 未暂存\n\n"
+        f"{file_list(source.unstaged_files)}\n\n"
+        "### 未跟踪\n\n"
+        f"{file_list(source.untracked_files)}\n\n"
+        "## 最近提交\n\n"
+        f"{commits_text}\n"
     )
 
 
@@ -358,8 +462,17 @@ def status_command() -> None:
         "wiki_repo": str(wiki),
         "branch": source.branch,
         "head": source.head,
+        "upstream": source.upstream or None,
+        "ahead": source.ahead,
+        "behind": source.behind,
         "current_work": source.summary,
         "changed_files": list(source.changed_files),
+        "staged_files": list(source.staged_files),
+        "unstaged_files": list(source.unstaged_files),
+        "untracked_files": list(source.untracked_files),
+        "changed_areas": list(source.changed_areas),
+        "diff_stat": source.diff_stat,
+        "recent_commits": list(source.recent_commits),
         "wiki_clean": not bool(git(wiki, ["status", "--short"], check=False)),
         "write_performed": False,
         "remote_pulled": True,
