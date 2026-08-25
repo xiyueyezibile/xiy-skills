@@ -146,7 +146,7 @@ git push <remote> HEAD:<current-branch>
 
 ## 会话监听与 Codex hooks
 
-会话监听是显式配置能力，不会因安装 Skill 自动开启。它通过 Codex 或 Trae 的 `UserPromptSubmit`、`Stop` 等命令型 hooks 调用 `scripts/xiy_llm_wiki_hook.py`；hook 根据事件中的 `cwd` 找到 Git 根目录，只处理该仓库在 `~/.xiy/config.json` 中启用的 `session_watch` 配置。对于 Codex 的 `UserPromptSubmit`，hook 按其 JSON 协议在 `additionalContext` 注入当前工作和只读加载指令，因此本轮模型能实际获得 Wiki 上下文，而不是仅在终端打印状态。
+会话监听是显式配置能力，不会因安装 Skill 自动开启。它通过 Codex 或 Trae 的 `UserPromptSubmit`、`Stop` 等命令型 hooks 调用 `scripts/xiy_llm_wiki_hook.py`；hook 根据事件中的 `cwd` 找到 Git 根目录，只处理该仓库在 `~/.xiy/config.json` 中启用的 `session_watch` 配置。对于 Codex 的 `UserPromptSubmit`，hook 按其 JSON 协议在 `additionalContext` 注入当前工作和只读加载指令，因此本轮模型能实际获得 Wiki 上下文。对于 `Stop`，hook 会启动独立的只读 Codex 提炼进程后立即返回，不再把收尾提示注入当前任务。
 
 先在目标仓库执行：
 
@@ -161,7 +161,7 @@ python3 /path/to/xiy-llm-wiki/scripts/llm_wiki.py hooks install --path ~/.trae-c
 
 安装 `~/.codex/hooks.json` 后必须重启 Codex，或先启动一次普通交互式 `codex`，让 Codex 重新加载配置并登记新增 hook 的信任哈希；已打开的桌面任务不会热加载新 hook。然后在目标仓库中新建任务进行验证。若 Codex 显示 hook 未受信任，只审核并授权指向 `xiy_llm_wiki_hook.py` 的 `UserPromptSubmit` 与 `Stop` 项，不要使用永久绕过 hook 信任的启动参数。
 
-验证成功时，任务界面会显示 `Xiy LLM Wiki 监听已命中当前仓库`；会话开始阶段能看到读取 `SKILL.md`、`WIKI_SCHEMA.md`、`wiki/current-work.md` 和 `wiki/index.md`，结束阶段能看到 `Xiy LLM Wiki 会话收尾`。
+验证成功时，会话开始阶段能看到读取 `SKILL.md`、`WIKI_SCHEMA.md`、`wiki/current-work.md` 和 `wiki/index.md`；结束阶段会在后台完成知识提炼，任务界面不会展示 `Xiy LLM Wiki 会话收尾` 提示，也不会为了提炼而续跑当前任务。
 
 配置会写成：
 
@@ -180,7 +180,7 @@ python3 /path/to/xiy-llm-wiki/scripts/llm_wiki.py hooks install --path ~/.trae-c
 }
 ```
 
-`action=extract` 是默认值：Codex 的 `Stop` hook 通过 `decision=block` 和 `reason` 请求一次有明确提示的续跑，回看本轮对话并只记录有依据、可复用的新知识；续跑时 `stop_hook_active=true`，hook 不会再次阻止结束。`record` 会自动 pull、commit、push。`action=status` 只拉取 Wiki 并输出状态，不写入；`action=sync` 会在匹配事件发生时执行 Wiki 同步并可能 commit/push。停用监听：
+`action=extract` 是默认值：Codex 的 `Stop` hook 会把本轮 transcript 交给独立的只读 Codex 进程，在后台对照现有 Wiki 提炼最多 5 条新知识；当前任务不被阻止结束，提炼提示和结果也不会显示给用户。后台进程本身不能修改文件，只有提炼结果通过严格结构校验后，才由 `record` 写入并自动 pull、commit、push。后台状态只记录到 `~/.xiy/session-watch.log`，日志不包含 transcript 或笔记正文。`action=status` 只拉取 Wiki 并输出状态，不写入；`action=sync` 会在匹配事件发生时执行 Wiki 同步并可能 commit/push。停用监听：
 
 ```bash
 python3 /path/to/xiy-llm-wiki/scripts/llm_wiki.py watch --disable

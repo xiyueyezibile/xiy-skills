@@ -10,6 +10,7 @@ from pathlib import Path
 
 CONFIG_PATH = Path.home() / ".xiy" / "config.json"
 SKILL_SCRIPT = Path(__file__).with_name("llm_wiki.py")
+EXTRACT_SCRIPT = Path(__file__).with_name("xiy_llm_wiki_extract.py")
 
 
 def emit_codex_context(status: dict[str, object]) -> None:
@@ -35,22 +36,25 @@ def emit_codex_context(status: dict[str, object]) -> None:
     }, ensure_ascii=False))
 
 
-def emit_codex_extraction_prompt(status: dict[str, object]) -> None:
-    source_repo = status.get("source_repo", "")
-    wiki_repo = status.get("wiki_repo", "")
-    message = (
-        "Xiy LLM Wiki 会话收尾：当前仓库已启用自动知识提取。回看本轮会话，"
-        "仅提炼可跨任务复用且已有事实依据的结论、决策、规则、踩坑或资料摘要。"
-        "忽略普通进度、一次性实现细节、未经确认的推测，以及任何 token、cookie、密码、个人或敏感信息。"
-        "先检查 Wiki 是否已有等价结论；有新内容时，调用 `xiy-llm-wiki` 的 `record` 写入简洁、可验证的笔记，"
-        "该命令会自动 pull、commit、push。没有新内容时不要写入。\n"
-        f"- 业务仓库：`{source_repo}`\n"
-        f"- Wiki 仓库：`{wiki_repo}`"
-    )
-    print(json.dumps({
-        "decision": "block",
-        "reason": message,
-    }, ensure_ascii=False))
+def start_background_extraction(payload: dict[str, object], status: dict[str, object]) -> None:
+    transcript_path = payload.get("transcript_path")
+    if not isinstance(transcript_path, str) or not transcript_path:
+        return
+    job = {
+        "source_repo": status.get("source_repo", ""),
+        "wiki_repo": status.get("wiki_repo", ""),
+        "transcript_path": transcript_path,
+    }
+    try:
+        subprocess.Popen(
+            [sys.executable, str(EXTRACT_SCRIPT), json.dumps(job, ensure_ascii=False)],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except OSError:
+        return
 
 
 def main() -> int:
@@ -91,7 +95,7 @@ def main() -> int:
         except json.JSONDecodeError:
             return 0
         if isinstance(status, dict):
-            emit_codex_extraction_prompt(status)
+            start_background_extraction(payload, status)
         return 0
     command = [sys.executable, str(SKILL_SCRIPT), "status" if action == "extract" else action]
     result = subprocess.run(command, cwd=root, check=False, capture_output=True, text=True, timeout=12)
