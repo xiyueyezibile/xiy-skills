@@ -192,6 +192,20 @@ hook 是按仓库路径匹配的，不会监听未配置的仓库；事件缺少
 
 给外部机器人读取时，提供 [references/external-agent-guide.md](references/external-agent-guide.md)。该文档规定了读取顺序、当前工作识别、证据引用、冲突处理、时间有效性和只读边界。外部机器人默认只能拉取和读取 Wiki，不能自动写入、提交或推送。
 
+## 机器人 Agent 配置
+
+本 Skill 随包提供 [agents/openai.yaml](agents/openai.yaml)，供支持 Skill Agent 元数据的机器或 harness 直接加载。默认提示会显式调用 `$xiy-llm-wiki`，按以下只读流程运行：
+
+1. 从当前 Git 根目录和 `~/.xiy/config.json` 解析关联的 Wiki 仓库。
+2. 使用配置的 remote 执行安全的 `pull --ff-only`，同步失败时停止，不覆盖本地内容。
+3. 读取 `WIKI_SCHEMA.md`、`wiki/current-work.md`、`wiki/index.md` 和与问题相关的页面。
+4. 回答时标明当前工作和依据的 Wiki 相对路径；证据不足、冲突或过期时明确说明。
+5. 默认不调用 `record`、`sync`，也不修改、commit 或 push Wiki。
+
+不支持 `agents/openai.yaml` 的机器人，应把 [references/external-agent-guide.md](references/external-agent-guide.md) 作为 system prompt 或 Agent instructions 使用，并确保机器人具备读取本地文件和执行只读 Git 命令的能力。
+
+这里的“只读”指不修改 Wiki 内容；`git pull --ff-only` 仍会更新 Wiki 仓库的 `.git/FETCH_HEAD` 等 Git 元数据。因此机器人运行环境必须允许 Wiki 仓库 Git 元数据写入，或由外部任务预先同步 Wiki 后再让机器人读取。严格的文件只读 sandbox 无法自行完成拉取。
+
 ## 交付要求
 
 执行后说明：

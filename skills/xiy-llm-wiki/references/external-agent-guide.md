@@ -34,6 +34,8 @@ LLM Wiki 是由 LLM 持续编译和维护的知识库：
 git pull --ff-only <configured-remote> <current-branch>
 ```
 
+“只读机器人”表示不修改 Wiki 内容，不代表整个 Wiki 仓库可以放在文件只读 sandbox 中。`git pull --ff-only` 仍需写入 `.git/FETCH_HEAD`、远端引用等 Git 元数据。部署时应只放行 Wiki 仓库的 Git 元数据更新，或在机器人运行前由可信外部任务完成同步；否则机器人只能使用可能过期的本地副本。
+
 本地有未提交改动、拉取冲突或无法快进时，不应擅自覆盖本地文件；应明确说明 Wiki 未能同步。
 
 ## 3. 当前工作识别

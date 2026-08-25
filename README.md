@@ -36,6 +36,8 @@ python3 ~/.trae-cn/skills/xiy-llm-wiki/scripts/llm_wiki.py hooks install
 
 给外部机器人使用时，提供 [外部机器人 LLM Wiki 读取协议](skills/xiy-llm-wiki/references/external-agent-guide.md)。协议要求机器人每次回答前读取 Wiki 规则、`wiki/current-work.md`、索引和相关页面，并在回答开头标识“当前工作”；外部机器人默认只读，不会自动修改或提交 Wiki。
 
+Skill 包内同时提供 [机器人 Agent 配置](skills/xiy-llm-wiki/agents/openai.yaml)。支持 Skill Agent 元数据的机器可直接加载该配置，并通过默认提示调用 `$xiy-llm-wiki`：它会从当前仓库和 `~/.xiy/config.json` 解析 Wiki，安全拉取后读取维护协议、当前工作、索引与相关页面，再附带来源路径回答；默认只读，不会自动记录、commit 或 push。运行环境仍需允许 `git pull --ff-only` 更新 Wiki 的 Git 元数据；严格文件只读 sandbox 应由外部任务预先同步 Wiki。
+
 支持按仓库配置 Codex/Trae 会话监听：运行 `watch --action extract` 配置目标仓库，再运行 `hooks install` 安装命令型 hooks。安装 Codex hooks 后需要重启 Codex，或启动一次普通交互式 `codex` 完成新增 hook 的信任登记；已打开的任务不会热加载。`extract` 会在 Codex 会话结束时启动独立的只读 Codex 进程，静默提取有依据、可复用的结论、决策、规则和踩坑，不向用户展示收尾提示或续跑当前任务；它会过滤普通进度、推测与敏感信息，仅在有新内容且通过结构校验时调用 `record` 写入 Wiki，并自动 commit + push。`status` 是只读模式，`sync` 是每个匹配事件自动同步模式。Trae 还需分别传入 `--path ~/.trae/hooks.json` 与 `--path ~/.trae-cn/hooks.json` 安装 hooks。
 
 ### find skills
