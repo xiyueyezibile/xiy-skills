@@ -194,7 +194,9 @@ hook 是按仓库路径匹配的，不会监听未配置的仓库；事件缺少
 
 ## 机器人 Agent 配置
 
-本 Skill 随包提供 [agents/openai.yaml](agents/openai.yaml)，供支持 Skill Agent 元数据的机器或 harness 直接加载。默认提示会显式调用 `$xiy-llm-wiki`，按以下只读流程运行：
+本 Skill 随包提供可直接作为 system prompt / Agent instructions 使用的 [agents/agent.md](agents/agent.md)。它是一份自包含的机器人配置，包含人设、命令菜单、安全边界、`/ask` 的知识检索流程、`/llm` 的显式写入边界，以及 LLM Wiki 的只读加载协议。
+
+机器人读取 Wiki 时按以下流程运行：
 
 1. 从当前 Git 根目录和 `~/.xiy/config.json` 解析关联的 Wiki 仓库。
 2. 使用配置的 remote 执行安全的 `pull --ff-only`，同步失败时停止，不覆盖本地内容。
@@ -202,7 +204,7 @@ hook 是按仓库路径匹配的，不会监听未配置的仓库；事件缺少
 4. 回答时标明当前工作和依据的 Wiki 相对路径；证据不足、冲突或过期时明确说明。
 5. 默认不调用 `record`、`sync`，也不修改、commit 或 push Wiki。
 
-不支持 `agents/openai.yaml` 的机器人，应把 [references/external-agent-guide.md](references/external-agent-guide.md) 作为 system prompt 或 Agent instructions 使用，并确保机器人具备读取本地文件和执行只读 Git 命令的能力。
+[agents/openai.yaml](agents/openai.yaml) 只是支持 Skill Agent 元数据的 UI / harness 入口，其默认提示会要求机器人继续读取 `agents/agent.md`，不能替代完整的 Agent 指令文档。只需要纯读取协议、不需要完整人设和命令菜单时，可使用 [references/external-agent-guide.md](references/external-agent-guide.md)。
 
 这里的“只读”指不修改 Wiki 内容；`git pull --ff-only` 仍会更新 Wiki 仓库的 `.git/FETCH_HEAD` 等 Git 元数据。因此机器人运行环境必须允许 Wiki 仓库 Git 元数据写入，或由外部任务预先同步 Wiki 后再让机器人读取。严格的文件只读 sandbox 无法自行完成拉取。
 
