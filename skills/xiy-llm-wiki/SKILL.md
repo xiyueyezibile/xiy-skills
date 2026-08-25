@@ -1,9 +1,9 @@
 ---
-name: "llm-wiki"
-description: "维护独立 Git 仓库形式的个人 LLM Wiki，编译和沉淀可复用知识并标识当前工作。仅在用户手动调用时更新并自动提交 push。"
+name: "xiy-llm-wiki"
+description: "维护独立 Git 仓库形式的个人 LLM Wiki，编译和沉淀可复用知识并标识当前工作。当前 Git 仓库在 ~/.xiy/config.json 启用 session_watch 时，自动读取 Wiki；action=extract 会在会话结束时提炼有依据的可复用信息，写入 Wiki 并自动提交 push。"
 ---
 
-# LLM Wiki
+# Xiy LLM Wiki
 
 管理一个独立的个人 LLM Wiki Git 仓库。Wiki 仓库根目录就是 Wiki 本身，不再在业务仓库中创建 `llm-wiki/` 子目录。`~/.xiy/` 只保存配置、仓库映射和本地路径，不保存 Wiki 内容。
 
@@ -16,12 +16,15 @@ LLM Wiki 的核心不是原文归档，而是把用户提供的资料、对话�
 
 ## 触发边界
 
-这是一个手动调用 Skill。普通编码、分析、聊天和其他 Skill 执行期间，不得自动写入或同步：
+普通编码、分析、聊天和其他 Skill 执行期间，不得自动写入或同步；唯一例外是 `~/.xiy/config.json` 中已启用 `session_watch.action=extract` 的当前 Git 仓库。它会在每次会话开始时自动进行只读加载，并在会话结束时由 Codex 回看本轮对话，只记录有依据、可复用的新知识，然后自动提交 push。
 
 - 用户明确要求记录、沉淀、学习或更新知识时，调用 `record`。
 - 用户明确要求识别当前工作时，调用 `status`；此命令不写 Wiki 内容，但会先拉取远端最新改动。
 - 用户明确要求配置或关联 Wiki 仓库时，调用 `init` 或 `link`。
 - 用户明确要求同步时，调用 `sync`；`record` 成功后也会自动执行同样的同步。
+- 用户明确要求监听指定仓库的会话时，先配置 `watch --action extract`，再安装 Codex hooks。
+
+`extract` 只会记录新出现的、可验证的结论、决策、规则、踩坑或资料摘要；不得记录普通进度、一次性实现细节、未经确认的推测或敏感信息。没有新内容时不写入。
 
 ## 配置与仓库关联
 
@@ -78,6 +81,8 @@ python3 scripts/llm_wiki.py link
 python3 scripts/llm_wiki.py status
 python3 scripts/llm_wiki.py record --category decision --note "这里写要沉淀的内容"
 python3 scripts/llm_wiki.py sync
+python3 scripts/llm_wiki.py watch --action extract
+python3 scripts/llm_wiki.py hooks install
 ```
 
 ### `init`
@@ -138,6 +143,54 @@ git push <remote> HEAD:<current-branch>
 - `wiki/index.md` 是全局目录，`log.md` 是 ingest、query、maintenance 和 sync 的时间日志。
 - `WIKI_SCHEMA.md` 是本 Wiki 的维护协议，随 Wiki 一起演进。
 - 原始资料只读，Wiki 页面可由 LLM 更新；不要删除已有结论来掩盖冲突，应记录冲突与来源。
+
+## 会话监听与 Codex hooks
+
+会话监听是显式配置能力，不会因安装 Skill 自动开启。它通过 Codex 或 Trae 的 `UserPromptSubmit`、`Stop` 等命令型 hooks 调用 `scripts/xiy_llm_wiki_hook.py`；hook 根据事件中的 `cwd` 找到 Git 根目录，只处理该仓库在 `~/.xiy/config.json` 中启用的 `session_watch` 配置。对于 Codex 的 `UserPromptSubmit`，hook 按其 JSON 协议在 `additionalContext` 注入当前工作和只读加载指令，因此本轮模型能实际获得 Wiki 上下文，而不是仅在终端打印状态。
+
+先在目标仓库执行：
+
+```bash
+python3 /path/to/xiy-llm-wiki/scripts/llm_wiki.py watch \
+  --action extract \
+  --events UserPromptSubmit Stop
+python3 /path/to/xiy-llm-wiki/scripts/llm_wiki.py hooks install
+python3 /path/to/xiy-llm-wiki/scripts/llm_wiki.py hooks install --path ~/.trae/hooks.json
+python3 /path/to/xiy-llm-wiki/scripts/llm_wiki.py hooks install --path ~/.trae-cn/hooks.json
+```
+
+安装 `~/.codex/hooks.json` 后必须重启 Codex，或先启动一次普通交互式 `codex`，让 Codex 重新加载配置并登记新增 hook 的信任哈希；已打开的桌面任务不会热加载新 hook。然后在目标仓库中新建任务进行验证。若 Codex 显示 hook 未受信任，只审核并授权指向 `xiy_llm_wiki_hook.py` 的 `UserPromptSubmit` 与 `Stop` 项，不要使用永久绕过 hook 信任的启动参数。
+
+验证成功时，任务界面会显示 `Xiy LLM Wiki 监听已命中当前仓库`；会话开始阶段能看到读取 `SKILL.md`、`WIKI_SCHEMA.md`、`wiki/current-work.md` 和 `wiki/index.md`，结束阶段能看到 `Xiy LLM Wiki 会话收尾`。
+
+配置会写成：
+
+```json
+{
+  "repositories": {
+    "/path/to/work-repo": {
+      "name": "work-repo",
+      "session_watch": {
+        "enabled": true,
+        "action": "extract",
+        "events": ["UserPromptSubmit", "Stop"]
+      }
+    }
+  }
+}
+```
+
+`action=extract` 是默认值：Codex 的 `Stop` hook 通过 `decision=block` 和 `reason` 请求一次有明确提示的续跑，回看本轮对话并只记录有依据、可复用的新知识；续跑时 `stop_hook_active=true`，hook 不会再次阻止结束。`record` 会自动 pull、commit、push。`action=status` 只拉取 Wiki 并输出状态，不写入；`action=sync` 会在匹配事件发生时执行 Wiki 同步并可能 commit/push。停用监听：
+
+```bash
+python3 /path/to/xiy-llm-wiki/scripts/llm_wiki.py watch --disable
+```
+
+hook 是按仓库路径匹配的，不会监听未配置的仓库；事件缺少有效 Git 工作目录、配置不存在或 Wiki 不可用时会静默退出，不阻塞会话。
+
+## 外部机器人读取协议
+
+给外部机器人读取时，提供 [references/external-agent-guide.md](references/external-agent-guide.md)。该文档规定了读取顺序、当前工作识别、证据引用、冲突处理、时间有效性和只读边界。外部机器人默认只能拉取和读取 Wiki，不能自动写入、提交或推送。
 
 ## 交付要求
 

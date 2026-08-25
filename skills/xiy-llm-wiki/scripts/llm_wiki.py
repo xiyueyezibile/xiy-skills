@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Sequence
 
 CONFIG_PATH = Path.home() / ".xiy" / "config.json"
+CODEX_HOOKS_PATH = Path.home() / ".codex" / "hooks.json"
+HOOK_SCRIPT = Path(__file__).resolve().parent / "xiy_llm_wiki_hook.py"
 
 
 @dataclass(frozen=True)
@@ -208,6 +210,73 @@ def link_command() -> None:
     print(f"已关联业务仓库：{source.root}")
 
 
+def configure_watch_command(args: argparse.Namespace) -> None:
+    config = load_config()
+    root = git_root(Path(args.repo).expanduser()) if args.repo else git_root(Path.cwd())
+    repositories = config.setdefault("repositories", {})
+    if not isinstance(repositories, dict):
+        raise RuntimeError("配置中的 repositories 必须是对象")
+    value = repositories.setdefault(str(root), {"name": root.name})
+    if not isinstance(value, dict):
+        raise RuntimeError(f"仓库配置不是对象：{root}")
+    value["session_watch"] = {
+        "enabled": not args.disable,
+        "action": args.action,
+        "events": args.events,
+    }
+    save_config(config)
+    state = "已启用" if not args.disable else "已停用"
+    print(f"{state}会话监听：{root}（action={args.action}, events={','.join(args.events)}）")
+
+
+def install_hooks_command(args: argparse.Namespace) -> None:
+    path = Path(args.path).expanduser() if args.path else CODEX_HOOKS_PATH
+    if path.exists():
+        try:
+            config = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            raise RuntimeError(f"Codex hooks 配置格式错误：{path}") from error
+    else:
+        config = {"hooks": {}}
+    if not isinstance(config, dict):
+        raise RuntimeError("Codex hooks 配置根节点必须是对象")
+    hooks = config.setdefault("hooks", {})
+    if not isinstance(hooks, dict):
+        raise RuntimeError("Codex hooks 配置中的 hooks 必须是对象")
+    command = f"python3 {HOOK_SCRIPT}"
+    entry = {"type": "command", "command": command, "timeout": 15}
+    for event in args.events:
+        items = hooks.setdefault(event, [])
+        if not isinstance(items, list):
+            raise RuntimeError(f"hooks.{event} 必须是数组")
+        existing = next(
+            (
+                item
+                for item in items
+                if isinstance(item, dict)
+                and isinstance(item.get("hooks"), list)
+                and any(
+                    isinstance(hook, dict)
+                    and "xiy_llm_wiki_hook.py" in str(hook.get("command", ""))
+                    for hook in item["hooks"]
+                )
+            ),
+            None,
+        )
+        if existing is not None:
+            existing["hooks"] = [entry]
+        else:
+            items.append({"hooks": [entry]})
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"已安装 Xiy LLM Wiki hooks：{path}（events={','.join(args.events)}）")
+    if path == CODEX_HOOKS_PATH:
+        print(
+            "Codex 不会热加载新 hook：请重启 Codex 或启动一次普通交互式 codex，"
+            "完成 hook 信任登记后再新建会话。"
+        )
+
+
 def sync(
     config: dict[str, object],
     source: Snapshot,
@@ -311,6 +380,15 @@ def build_parser() -> argparse.ArgumentParser:
                         default="context")
     record.add_argument("--note", required=True)
     sub.add_parser("sync")
+    watch = sub.add_parser("watch", help="配置当前仓库的会话监听")
+    watch.add_argument("--repo")
+    watch.add_argument("--action", choices=("extract", "status", "sync"), default="extract")
+    watch.add_argument("--events", nargs="+", default=("UserPromptSubmit", "Stop"))
+    watch.add_argument("--disable", action="store_true")
+    hooks = sub.add_parser("hooks", help="安装 Codex hooks")
+    hooks.add_argument("install", choices=("install",))
+    hooks.add_argument("--path")
+    hooks.add_argument("--events", nargs="+", default=("UserPromptSubmit", "Stop"))
     return parser
 
 
@@ -330,6 +408,10 @@ def main() -> int:
         elif args.command == "sync":
             config = load_config()
             sync(config, current_source())
+        elif args.command == "watch":
+            configure_watch_command(args)
+        elif args.command == "hooks":
+            install_hooks_command(args)
         return 0
     except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
         print(f"错误：{error}", file=sys.stderr)
