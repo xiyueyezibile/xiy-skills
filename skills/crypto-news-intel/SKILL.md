@@ -59,7 +59,7 @@ description: 监控并核验公开新闻、市场热点、公告、监管文件�
   "market_structure_summary": "已完成 1d/4h/1h/15m 分析，缺少消息驱动交易路径",
   "analyzed_timeframes": ["1d", "4h", "1h", "15m"],
   "market_data_time": "2026-08-23T15:59:59+08:00",
-  "deep_analysis_required": false
+  "deep_analysis_required": true
 }
 ```
 
@@ -68,7 +68,7 @@ description: 监控并核验公开新闻、市场热点、公告、监管文件�
 - 全市场流动性门槛固定为 24h 成交额 `>= 10,000,000 USDT`；`research_audit` 中唯一标的数必须等于通过该门槛的机械过滤幸存数。
 - payload 必须保存完整 `liquidity_survivors` 明细；其 symbol 集合必须与 `research_audit` 完全一致。每条 `checked_sources`、`retrieved_at`、`outcome`、`status`、`reason`、`analysis_summary`、`news_conclusion`、`market_structure_summary`、`market_data_time` 均非空，`analysis_completed` 必须为 `true`，`analyzed_timeframes` 必须完整包含 `1d/4h/1h/15m`。
 - 每个幸存标的都必须传给行情结构 Skill 完成 1d/4h/1h/15m 分析，再把 `chase_risk` 标准化为 `低/中低/中/中高/高/极高`；不能因为没有有效催化而跳过结构分析。
-- `低/中低/中/中高` 的全部标的必须进入最终候选矩阵和逐币深度报告；`高/极高` 可以只保留逐项研究审计，但不得省略分析结论。
+- 全部幸存标的无论风险等级或消息结论，都必须进入 `coin_reports` 完整逐币深度报告，且 `deep_analysis_required=true`。候选矩阵只收录具有交易或明确复核价值的 `opportunity` / `watch` 子集；`高/极高` 或无有效催化只影响候选资格，不能降低分析深度。
 - 历史上下文只能用于补充别名和查询词；没有本轮访问证据时，不得沿用历史结论。
 
 ## 市场热点分析

@@ -5,7 +5,7 @@ description: 基于公开消息、市场热点、分层传闻和 Binance 公共�
 
 # Crypto News Analysis Report
 
-这是“只分析，不交易”的消息面选币报告流程。它覆盖两类公开市场：
+这是“只分析，不交易”的消息面选币报告流程。默认采用消息面 `80%`、技术面 `20%`：消息决定候选价值，技术面只辅助判断定价程度、追入偏差、失效位和拥挤风险，不要求多周期全部确认。它覆盖两类公开市场：
 
 - 加密货币 U 本位永续：BTC、ETH、SOL、XRP 等。
 - 股票代币 / TradFi perpetual：Binance 上 `contractType=TRADIFI_PERPETUAL` 的 tokenized stock futures / bStocks 相关标的，例如 `UNITREEUSDT`、`KUAISHOUUSDT`、`CXMTUSDT` 等。
@@ -55,11 +55,11 @@ python3 scripts/binance_market_snapshot.py analyze --include-tradfi --symbols UN
 
 - 全市场选币必须先刷新 `crypto-news-selector/references/binance-usdm-universe.md/.json`，读取全部合约的 `market_type` 与 `news_sources` 后再过滤；不能用 `scan --limit 30/40` 代表全市场。若独立安装时缺少 `crypto-news-selector`，必须直接读取 Binance `exchangeInfo` 重建等价全量清单，并在报告中披露底池规模。
 - 全量覆盖默认包含普通加密永续和全部 TradFi 永续，显式区分加密币、美股/ETF/ADR、韩股、港股、A 股、商品和 Pre-IPO。季度合约计入覆盖审计，但不与同底层永续重复推荐。
-- 报告必须分开披露目录覆盖数、24h 行情初筛数、流动性通过数、实际消息核验数、逐币分析完成数、中高及以下风险写入报告数、逐币深度章节数和摘要淘汰数。全市场流动性门槛固定为 24h 成交额 `>= 10,000,000 USDT`，不得提高门槛缩小分析范围。`news_sources` 仅是检索渠道路由，不能证明来源已访问。
+- 报告必须分开披露目录覆盖数、24h 行情初筛数、流动性通过数、实际消息核验数、逐币分析完成数、进入候选矩阵数、逐币深度章节数和淘汰数。全市场流动性门槛固定为 24h 成交额 `>= 10,000,000 USDT`，不得提高门槛缩小分析范围。`news_sources` 仅是检索渠道路由，不能证明来源已访问。
 - 全市场模式下，payload 必须保存完整 `liquidity_survivors` 明细；其 symbol 集合必须与 `research_audit` 完全一致。通过 1000 万 USDT 门槛的每个幸存标的都必须完成消息、定价及 1d/4h/1h/15m 结构分析。每条记录必须包含实际检查渠道/URL、查询词、检索时间、最新事件或 `no_valid_catalyst_found`、`analysis_completed=true`、完整 `analyzed_timeframes`、`market_data_time`、标准化 `chase_risk`、分析摘要、消息结论、结构结论、状态和原因。
-- 报告长度不设上限。追进去风险为 `低/中低/中/中高` 的全部标的必须同时进入候选矩阵和 `coin_reports` 深度章节；只有 `高/极高` 标的可以仅保留在逐项研究审计中，但仍必须完成并展示分析摘要。
-- 报告必须执行跨轮新颖性控制：读取最近报告的 `symbol/catalyst_id/reported_at/status/active_position` 历史；新候选冷却最近 3 份报告或 72 小时，同一催化冷却 7 天。候选条目记录 `novelty_status`、`repeat_count`、`repeat_penalty`、`prior_reports`、`cooldown_until`、`catalyst_id` 和 `selection_reason`。
-- `repeat_penalty >= 2` 的标的只能进入深度观察/已启动确认池，`repeat_penalty >= 3` 不得进入新候选矩阵；active 持仓只进入“已开仓催化落地跟踪”。若本轮没有合格新标的，报告必须明确说明，不得用重复标的填充候选数量。冷却只影响候选层，不能从逐项研究审计中删除本轮标的。
+- 报告长度不设上限。通过流动性门槛的全部标的无论风险等级、消息结论或淘汰状态，都必须进入 `coin_reports` 完整深度章节；候选矩阵只收录具有交易或明确复核价值的子集。不得用 `高/极高`、无有效催化或篇幅过长作为省略逐币章节的理由。
+- 报告必须执行跨轮新颖性控制：读取最近报告的 `symbol/catalyst_id/reported_at/status/active_position` 历史；最近 3 份报告、72 小时和同一催化 7 天窗口用于标注 `新候选/持续催化/二阶段`，不机械取消交易资格。候选条目记录 `novelty_status`、`repeat_count`、`repeat_penalty`、`prior_reports`、`cooldown_until`、`catalyst_id` 和 `selection_reason`。
+- `repeat_penalty` 只影响展示顺序和新颖性标签，不设置禁止进入候选矩阵的固定阈值；消息仍在有效窗口、传导尚未充分兑现或出现新官方事实/事件状态/定价证据时，重复标的仍可成为核心候选。active 持仓只进入“已开仓催化落地跟踪”。冷却不能从逐项研究审计中删除本轮标的。
 - HTML 报告默认写到项目根目录，文件名必须带 `skill-selection-report`，便于和其他临时报告区分：
 
 ```text
@@ -72,7 +72,7 @@ python3 scripts/binance_market_snapshot.py analyze --include-tradfi --symbols UN
 
 执行要求：
 
-1. 汇总公开消息、公共行情和逐币判断后，先生成结构化 JSON payload。全市场模式必须设置 `meta.full_universe_research=true`；`screening_counts` 必须提供 `liquidity_threshold_quote_volume_usdt=10000000`、`post_filter_survivors`、`researched_survivors`、`analyzed_survivors`、`reported_risk_eligible`、`deep_analysis`，并提供完整 `liquidity_survivors` 和 `research_audit`。
+1. 汇总公开消息、公共行情和逐币判断后，先生成结构化 JSON payload。全市场模式必须设置 `meta.full_universe_research=true`；`screening_counts` 必须提供 `liquidity_threshold_quote_volume_usdt=10000000`、`post_filter_survivors`、`researched_survivors`、`analyzed_survivors`、`reported_risk_eligible`、`deep_analysis`，并提供完整 `liquidity_survivors`、`research_audit` 和 `coin_reports`。其中 `researched_survivors`、`analyzed_survivors`、`deep_analysis` 必须同时等于 `post_filter_survivors`，三个列表的 symbol 集合必须完全一致。
 2. 调用随包渲染脚本：
 
 ```bash
@@ -128,7 +128,7 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
 - `selection_implication`：热点如何影响本轮候选补漏、追入风险和风险簇控制。
 - `limitations`：数据缺口和反向解释。
 
-没有一致性热点时允许 `themes=[]`，但必须提供 `no_dominant_theme_reason`。不能为填充报告强行命名热点，也不能用热点身份代替逐币消息来源和结构确认。
+没有一致性热点时允许 `themes=[]`，但必须提供 `no_dominant_theme_reason`。不能为填充报告强行命名热点，也不能用热点身份代替逐币消息来源、定价检查和风险控制。
 
 每个 `coin_reports` 和 `position_followups` 条目必须包含 `asset_profile`：
 
@@ -200,7 +200,7 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
 
 | 等级 | 口径 | 处理 |
 |---|---|---|
-| `实时` | 发布时间或事件生效时间距当前 ≤ 6 小时 | 可进入短线核心候选，但仍需行情确认 |
+| `实时` | 发布时间或事件生效时间距当前 ≤ 6 小时 | 可进入短线核心候选，行情只辅助判断定价、止损和拥挤 |
 | `新鲜` | 6–24 小时 | 可进入候选，重点检查是否已被定价 |
 | `仍有效` | 24–72 小时，且事件影响未完成或仍有后续窗口 | 可观察或等待结构触发 |
 | `中长线有效` | 3–30 天，且有持续采用、治理、监管、解锁、升级等后续路径 | 只进中长线/主题观察 |
@@ -259,7 +259,7 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
 - `保守目标`、`结构失效位`、扣除手续费/滑点/资金费率后的 `剩余净盈亏比`。
 - `行情耗尽信号`：充分定价、量价背离、衍生品拥挤、结构失效或后续节点取消。
 
-部分落地标的应进入 `已启动确认池`。当二阶段触发已确认且剩余净盈亏比 `> 1` 时，仍可成为候选；只有效应已充分兑现且没有后续路径，或剩余净盈亏比 `<= 1`，才可淘汰。淘汰理由不能只写“已经落地”。
+部分落地标的应进入 `已启动确认池`。二阶段结构触发已确认时可按正常风险档评估；若直接来源确认、剩余传导清晰、价格尚未充分定价、止损可执行且剩余净盈亏比 `> 1`，即使短周期触发尚不完整，也可标为“消息抢跑小仓”候选。只有效应已充分兑现且没有后续路径，或剩余净盈亏比 `<= 1`，才可淘汰。淘汰理由不能只写“已经落地”。
 
 `coin_reports` 和 `position_followups` 中的部分落地标的使用以下结构，渲染器会生成二阶段分析区块：
 
@@ -294,7 +294,7 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
 2. **全市场覆盖审计**
    - 读取最新全量清单，报告 `total`、各 `contractType` 数量和各 `market_type` 数量，确认普通永续与 TradFi 永续均已进入流动性和事件过滤。
    - 机械过滤仅允许使用已披露的可复现硬条件；过滤后全部幸存标的必须逐项真实访问对应消息渠道，并写入 `research_audit`。每个记录必须沿用清单中的市场类型；不能把韩股、港股、A 股、商品或 Pre-IPO 统一写成美股。
-   - `researched_survivors` 和 `analyzed_survivors` 必须同时等于 `post_filter_survivors`，`liquidity_survivors` 与 `research_audit` 的 symbol 集合及 24h 成交额必须一致；任一通过 1000 万 USDT 门槛的标的未完成消息与多周期结构分析，或存在未解决抓取失败时，不得生成全市场报告。
+   - `researched_survivors`、`analyzed_survivors` 和 `deep_analysis` 必须同时等于 `post_filter_survivors`，`liquidity_survivors`、`research_audit` 与 `coin_reports` 的 symbol 集合必须一致；任一通过 1000 万 USDT 门槛的标的未完成消息、多周期结构或完整逐币章节，或存在未解决抓取失败时，不得生成全市场报告。
 
 3. **消息面取证**
    - 按 `crypto-news-intel` 规则对全部幸存标的检索官方公告、交易所公告、监管文件、主流新闻和行业媒体，不得先按已有排期或熟悉度抽样。
@@ -311,10 +311,10 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
    - FinViz / `finviz-screener` 只能作为**美股候选池辅助**：用于确认某个消息主题下有哪些美股、流动性/市值/技术条件如何；不能把 FinViz 筛选结果本身当成消息催化，也不能让财务/技术因子取代消息面主线。
    - `pre_landing` 模式必须优先找排期事件：未来交易所上线/下架/结算、网络升级/硬分叉、治理执行、解锁、主网/产品发布、财报、监管听证/投票/裁决、指数/ETF/质押/空投等；没有未来节点的已落地新闻不得进入核心。
 
-4. **公共行情结构确认**
+4. **公共行情结构辅助（20%）**
    - 用 Binance 公共行情确认标的是否为 U 本位永续且 `TRADING`。
    - 普通加密永续默认只接受 `PERPETUAL`；股票代币流程必须显式使用 `--include-tradfi` 或 `--tradfi-only`，并在报告中标注 `TRADIFI_PERPETUAL` 与 `underlyingType`。
-   - 对通过 1000 万 USDT 门槛的全部标的运行多周期分析，记录 `generated_at`、各周期最后 K 线收盘时间、价格、EMA、RSI、ATR、成交量相对变化；完成后统一评定 `低/中低/中/中高/高/极高` 追进去风险。
+   - 对通过 1000 万 USDT 门槛的全部标的运行多周期分析，记录 `generated_at`、各周期最后 K 线收盘时间、价格、EMA、RSI、ATR、成交量相对变化；完成后统一评定 `低/中低/中/中高/高/极高` 追进去风险。四周期必须分析和披露，但不要求全部同向；它们用于判断是否严重追高、止损能否执行、应市价/小仓抢跑/等回踩，以及 OI/资金费率是否极端拥挤。
 
 5. **合并判断**
    - 每个通过门槛的币都要给分析状态，不给仓位金额：
@@ -322,8 +322,8 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
      - `等触发`
      - `只观察`
      - `淘汰`
-   - 判断依据必须同时包含消息时效性和行情结构；任何一个缺失都不能升级为高优先级。
-   - `低/中低/中/中高` 的标的必须写入候选矩阵和逐币深度章节；渲染脚本会按 `research_audit` 反查，遗漏任一标的即拒绝输出。`高/极高` 可只保留逐项审计与分析摘要。
+   - 判断依据必须包含消息时效性、未定价空间和技术辅助结论。消息事实/传导/定价判断缺失时不能升级为高优先级；仅缺少完整多周期共振时，不得单独否决直接来源已确认且尚未充分定价的强催化。
+   - 全部幸存标的必须写入逐币深度章节；渲染脚本会按 `liquidity_survivors` 和 `research_audit` 反查，遗漏任一标的即拒绝输出。候选矩阵仍只收录 `opportunity` / `watch` 等具有交易或明确复核价值的子集。
    - 传闻状态为 `lead`、`corroborated` 或 `disputed` 时只能标 `只观察`；行情已经启动则同时进入“已启动确认池”，但仍须等直接来源确认，不能仅凭涨幅升级。
    - `pre_landing` 候选额外标注 `未来催化节点`、`当前阶段`、`剩余时间`、`利好/利空落地程度`、`是否已被抢跑`、`提前埋伏条件`、`兑现风险`；如果已经明显抢跑，不能用“事件未发生”降低风险。
    - `初步落地` / `基本落地` 标的必须保留逐币章节，并展示 `已完成传导`、`未完成传导`、`下一验证节点`、`二阶段触发`、`保守目标`、`结构失效位`、`剩余净盈亏比` 和 `行情耗尽信号`；字段不足时降级为 `只观察`，不能无痕排除。
@@ -336,14 +336,13 @@ python3 scripts/render_report.py --input /tmp/crypto-news-analysis-report.json
 - 只有同时满足以下条件，`追进去风险` 才能标为 `低`、`中低` 或 `中`：
   1. 核心消息是一手或高可信来源，并且已经写清发布时间、事件/生效时间、检索时间、时效性和有效窗口。
   2. 利好/利空至少部分落地，不只是财报前预期、分析师观点、媒体解读、主题扩散、传闻或“可能订单”。
-  3. 行情触发已经发生：突破必须至少 15m 收盘站稳，回踩必须出现承接，不能只靠盘中刺破。
-  4. 价格没有明显远离触发位；若刚 24h 大涨、靠近前高、RSI 偏热或量能背离，至少标 `中高`。
-  5. 股票代币还必须确认底层正股或主要交易时段有承接；Binance 24/7 合约单边抢跑不能单独降风险。
+  3. 价格没有明显远离合理入场区，止损可执行，且不存在结构已经反向失效或衍生品极端拥挤；15m/1h 完整确认是加分项，不是直接来源强催化的必备条件。
+  4. 股票代币还必须确认底层正股或主要交易时段有承接；Binance 24/7 合约单边抢跑不能单独降风险。
 - 以下任一情况，`追进去风险` 必须标 `中高` / `高` / `极高`，并在 `操作倾向` 写 `等触发`、`只观察` 或 `淘汰`：
   - 消息只是财报前预期、分析师上调、媒体观点、主题扩散，尚未被公司财报/指引/订单/监管文件确认。
-  - 报告给出的关键措辞是“等待突破”“等待回踩承接”“可继续跟踪”，但触发尚未发生。
   - 已接近或刺破前高但未站稳，或 15m/1h 出现放量下杀、冲高回落、量价背离。
   - 股票代币处于美股休市/盘前盘后错位阶段，底层正股尚未确认。
+- 直接来源已确认、消息传导清晰、尚未充分定价、止损明确且净盈亏比 `>1`，但短周期确认尚未完整时，可以给 `中高` 并把操作倾向写成 `消息抢跑小仓`；不得因为风险标签高于 `中` 就自动改成只观察。未确认传闻不适用。
 - 对每个 `中` 或更低风险标签，必须同时写一句 `为什么现在可以开而不是只观察`；写不出来就上调到 `中高` 或 `高`。
 - `操作倾向` 不允许含混：若不是可直接开，必须写 `等触发：具体触发条件...` 或 `只观察`，不能只写“可继续跟踪”。
 

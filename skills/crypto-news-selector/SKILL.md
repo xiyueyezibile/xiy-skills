@@ -130,7 +130,7 @@ python3 scripts/binance_private_snapshot.py
 - 市场类型必须显式标注：`CRYPTO=加密币`、`US_EQUITY=美股/美股 ETF/ADR`、`KR_EQUITY=韩股`、`HK_EQUITY=港股`、`CN_EQUITY=A 股`、`COMMODITY=商品`、`PREMARKET=Pre-IPO`。不得把所有 `TRADIFI_PERPETUAL` 笼统写成美股。
 - 股票代币、bStocks 或 TradFi perpetual 默认随全市场一起扫描，不需要等待用户单独点名。进入股票代币专用分析后，区分底层上市公司消息与 Binance 合约/交易工具消息，行情脚本必须显式使用 `--include-tradfi` 或 `--tradfi-only`，并标注 `TRADIFI_PERPETUAL`、`underlyingType`、底层股票交易所、合约 24/7 与股票交易时段错位。不把 Binance 上线、tick size 或资金费率调整直接写成底层公司利好。
 - 必须区分覆盖层级：`目录覆盖` 只确认合约和类型；`行情初筛` 只读取 24h ticker；`消息路由` 只给出应该查询的渠道；`消息核验` 才表示已访问来源并验证事实与时间；`深度分析` 还必须包含多周期 K 线、传导链、反向解释、定价证据和交易条件。不得把前三级表述为“逐币验证”或“全部分析”。
-- 短周期轨道使用 4h 定方向、1h 确认、15m 入场；中长线轨道使用 1d 定市场状态和主趋势、4h 构建交易结构、1h 择时，15m 仅用于减少成交偏差，不能用 15m 噪声推翻日线逻辑。
+- 默认采用消息驱动权重：消息面 `80%`、技术面 `20%`。消息决定是否存在交易机会；短周期的 4h/1h/15m 与中长线的 1d/4h/1h 主要用于避开严重追高、选择入场方式、设置止损和控制仓位，不要求全部周期共振后才推荐。
 - 支持三种策略模式：`single` 单币精选、`basket` 滚动篮子、`medium_long` 中长线波段。用户要求多币种、十几个仓或埋伏高盈利币时默认使用 `basket`；用户提到中长线、波段、持有几天/几周时启用 `medium_long`，并与篮子并行输出而非替代篮子。
 - 单币精选模式：净盈亏比 `>1 且 <1.5` 时风险通常不超过权益 `0.5%`；净盈亏比 `1.5–3` 通常为 `0.75%`；证据全部共振且保守净盈亏比 `≥3` 的 A+ 机会才可使用 `1.25%`。
 - 篮子探索模式分为真实开仓层、观察层和纸面追踪层：机械过滤后的全部幸存标的都必须完成逐项消息发现；真实开仓只取合格子集。严格门禁下允许实际持仓仅 `3–6` 腿，候选充分且风险分散时再扩展到 `8–12` 腿、上限 `15` 腿。2–4 个核心仓每个风险 `0.4%–0.6%`，其余侦察仓每个风险 `0.15%–0.3%`，任何一腿不得超过 `0.6%`。不得为了凑开仓数量纳入低流动性、同风险簇拥挤、缺少结构止损或净盈亏比不合格的币。
@@ -140,7 +140,7 @@ python3 scripts/binance_private_snapshot.py
 - 建议有效杠杆通常为 `3x–7x`、硬上限 `10x`。高波动、低流动性、消息不确定或强平缓冲不足的标的必须降低杠杆或淘汰。
 - 用户的进攻目标是月度账户收益 `100%+`，这是策略设计与复盘基准，不是承诺、预测或强制交易配额。不得为了追赶月目标放宽消息质量、结构止损、流动性或风险闸门。
 - TP1 保证金收益率约 `50%` 是优先偏好，不是固定收益要求。先由行情结构、波动率和消息持续性确定止损、分批目标与尾仓退出，再计算实际保证金收益率；禁止为了凑 50% 虚构目标或迁就止损。
-- 最低门槛使用扣除预估手续费、资金费率和滑点后的保守净盈亏比，必须严格 `>1`。优先选择 `≥1.5`，`≥3` 才有资格进入最高风险档；盈亏比不等于胜率，仍须通过消息、结构和拥挤度门禁。
+- 最低门槛使用扣除预估手续费、资金费率和滑点后的保守净盈亏比，必须严格 `>1`。优先选择 `≥1.5`，`≥3` 才有资格进入最高风险档；盈亏比不等于胜率，仍须通过消息硬门槛、可执行止损和拥挤度门禁，但不要求所有技术周期同时确认。
 - 排除：稳定币相关标的、杠杆代币、非 `TRADING` 永续合约、低流动性标的及已知临近下架标的。
 - 报告候选不设数量上限：凡逐项核验后存在新鲜/仍有效/中长线有效催化、可信传闻线索或可复核二阶段路径的标的都必须列出，不能为了缩短报告只保留 Top-N。真实交易计划仍最多选择风险门禁通过的少量标的；只有 `可开仓` 标的可以生成确认草案。
 
@@ -148,10 +148,10 @@ python3 scripts/binance_private_snapshot.py
 
 每轮消息面选币都必须读取最近报告 payload 或 HTML 对应的结构化记录，建立 `symbol`、`catalyst_id`、`reported_at`、`status` 和 `active_position` 的历史索引。历史索引只用于候选排序和重复控制，不得替代本轮消息核验与四周期分析。
 
-- **新候选冷却期**：标的在最近 `3` 份报告或最近 `72` 小时内已经进入过 `candidates` / 新候选区，默认不得再次进入新候选；仍有有效逻辑时转入“深度观察/已启动确认池”，并说明冷却截止时间。
-- **同催化冷却期**：同一 `catalyst_id` 在最近 `7` 天内重复出现时，默认只保留一次核心候选。后续报告只能作为二阶段跟踪，除非出现新的官方事实、事件状态变化、结构触发或定价证据。
+- **新候选冷却期**：标的在最近 `3` 份报告或最近 `72` 小时内已经进入过 `candidates` / 新候选区时，标注为“持续催化/二阶段”并降低展示新颖性；冷却只用于避免重复包装，不得机械取消仍在有效窗口、尚有剩余传导的交易资格。
+- **同催化冷却期**：同一 `catalyst_id` 在最近 `7` 天内重复出现时，默认改为持续催化或二阶段跟踪。只要消息仍有效、传导尚未充分兑现，或出现新的官方事实、事件状态、定价证据，仍可成为核心候选。
 - **重复惩罚**：每个标的在最近 `5` 份报告中每出现一次，`repeat_penalty` 加 `1`；同一催化重复出现额外加 `2`；最近一次已标记“已启动/已抢跑/只观察”而没有新证据时额外加 `1`。报告必须记录 `repeat_count`、`repeat_penalty`、`prior_reports` 和 `selection_reason`。
-- **候选升级门槛**：`repeat_penalty >= 2` 的标的不得进入“提前埋伏池”；`repeat_penalty >= 3` 的标的不得进入新候选矩阵，只能进入深度观察或全市场审计。只有新催化、催化状态发生可验证变化、四周期结构从失效转为触发，或冷却期结束后重新通过全部门禁，才能解除惩罚。
+- **候选升级门槛**：`repeat_penalty` 只影响排序和 `新候选/持续催化/二阶段` 标签，不设置禁止进入候选矩阵或提前埋伏池的固定阈值。当前消息有效性、剩余传导、定价程度、净盈亏比和风险否决项决定是否可开仓。
 - **active 仓位隔离**：`position-watch` 中的 active 标的永远进入 `position_followups`，不得因为出现新新闻而重新包装为新候选；新新闻只能写成“增强/削弱/需降风险/背景”，除非用户明确平仓且后续重新通过冷却和候选门禁。
 - **新颖性优先**：每轮报告至少优先展示一组本轮历史索引中未出现、且通过消息与结构门禁的标的；若没有合格新标的，必须明确写“本轮无合格新候选”，不得用旧标的填充数量。
 - **审计不丢失**：冷却或重复惩罚只影响候选层，不得从 `research_audit` 删除标的。审计中必须保留其本轮消息结论、结构结论、淘汰原因和下一复核条件。
@@ -282,7 +282,7 @@ python3 scripts/build_universe_catalog.py
 
 读取脚本返回的 `total`、`contract_type_counts` 和 `market_type_counts`，并确认 [references/binance-usdm-universe.json](references/binance-usdm-universe.json) 中 `contracts` 数量与 `total` 一致。报告必须披露本轮实际底池规模和各市场数量；刷新失败时只能沿用快照并显式标注快照时间，不得声称已完成实时全量扫描。
 
-报告必须同时披露每层实际数量：目录覆盖数、进入行情初筛数、通过流动性门槛数、已完成消息核验数、已完成逐币分析数、追进去风险为中高及以下并写入报告的标的数、逐币深度章节数和仅摘要淘汰数。全市场模式的流动性门槛固定为 24h 成交额 `>= 10,000,000 USDT`，不得临时提高门槛缩小工作量。`news_sources` 非空只表示已配置检索路由，不构成访问或验证证据；只有保存了实际来源、发布时间、检索时间和核验结论的标的才能计入“消息核验”。
+报告必须同时披露每层实际数量：目录覆盖数、进入行情初筛数、通过流动性门槛数、已完成消息核验数、已完成逐币分析数、进入候选矩阵的标的数、逐币深度章节数和淘汰数。全市场模式的流动性门槛固定为 24h 成交额 `>= 10,000,000 USDT`，不得临时提高门槛缩小工作量。`news_sources` 非空只表示已配置检索路由，不构成访问或验证证据；只有保存了实际来源、发布时间、检索时间和核验结论的标的才能计入“消息核验”。
 
 机械排除只能使用可复现硬条件：非 `TRADING`、非目标合约类型、稳定币相关、同底层季度合约去重、低于当轮明确披露的流动性门槛、已由 Binance 一手公告确认临近下架。不得因为“没听说过”“历史上下文没出现”“涨跌幅不突出”“搜索起来麻烦”提前排除。
 
@@ -296,15 +296,15 @@ python3 scripts/build_universe_catalog.py
 - `published_at`、`event_time`、`timeliness`、未来/持续窗口、来源 URL；没有有效消息时对应字段可为空，但必须写明已检查范围；
 - `outcome`、`status` 与具体原因：`opportunity`、`watch`、`no_valid_catalyst`、`stale_or_priced`、`source_conflict`、`fetch_failed_unresolved`；
 - `analysis_completed=true`、`analyzed_timeframes=["1d","4h","1h","15m"]`、`market_data_time`、标准化 `chase_risk`（只能是 `低/中低/中/中高/高/极高`）、`analysis_summary`、`news_conclusion` 和 `market_structure_summary`。通过 1000 万 USDT 门槛的每个标的都必须完成消息、定价和多周期结构分析，不能用“无有效催化”跳过分析。
-- 是否进入报告逐币章节，以及未进入时的确定性理由。`低/中低/中/中高` 必须进入 `coin_reports` 和 `candidates`；只有 `高/极高` 可以仅保留在逐项研究审计中。
+- `deep_analysis_required=true`，并进入 `coin_reports` 完整逐币章节。所有幸存标的都必须生成深度章节；风险等级和淘汰状态只能影响候选资格，不能作为省略深度分析的理由。`candidates` 只收录具有交易或明确复核价值的 `opportunity` / `watch` 子集。
 
 完成门禁：
 
-1. payload 必须保存通过门槛的完整 `liquidity_survivors`（逐项包含 `symbol` 和 `quote_volume_24h_usdt`）。`post_filter_survivors` 必须只统计 24h 成交额 `>= 10,000,000 USDT` 的机械过滤幸存标的；`researched_survivors` 和 `analyzed_survivors` 都必须等于 `post_filter_survivors`，且 `liquidity_survivors` 与 `research_audit` 的 symbol 集合必须完全一致；否则任务未完成。
+1. payload 必须保存通过门槛的完整 `liquidity_survivors`（逐项包含 `symbol` 和 `quote_volume_24h_usdt`）。`post_filter_survivors` 必须只统计 24h 成交额 `>= 10,000,000 USDT` 的机械过滤幸存标的；`researched_survivors`、`analyzed_survivors` 和 `deep_analysis` 都必须等于 `post_filter_survivors`，且 `liquidity_survivors`、`research_audit`、`coin_reports` 的 symbol 集合必须完全一致；否则任务未完成。
 2. `fetch_failed_unresolved` 不能当作“无机会”或“淘汰”；必须重试其他对应渠道。仍无法核验时在报告中醒目标记研究缺口，并明确本轮全市场结论不完整。
 3. 每个幸存标的都必须调用 `analyze` 获取 1d/4h/1h/15m 数据并完成逐币判断，再评定追进去风险；不能先凭已有认知挑少数币做结构分析。
-4. 追进去风险为 `低/中低/中/中高` 的全部标的必须进入报告候选矩阵和 `coin_reports` 完整逐币章节，不设 Top-N 或篇幅上限；渲染器会按 `research_audit` 逐项反查，缺少任一标的即拒绝生成。
-5. 追进去风险为 `高/极高` 的标的允许只进入“逐项研究审计”表，但仍必须保留完整 `analysis_summary`、消息结论、市场结构结论、实际检查渠道、检索时间和排除原因，不能从报告无痕消失。
+4. 全部幸存标的必须进入 `coin_reports` 完整逐币章节，不设 Top-N、风险等级或篇幅上限；渲染器会按 `liquidity_survivors` 和 `research_audit` 逐项反查，缺少任一标的即拒绝生成。
+5. `高/极高`、`no_valid_catalyst`、`stale_or_priced`、`source_conflict` 等标的仍须完成同等深度的消息事实、传导、定价、四周期结构、失效位和净盈亏比说明，但可以明确标为淘汰且不进入候选矩阵。
 
 消息面取证按清单中的 `market_type` 和 `news_sources` 路由：
 
@@ -378,7 +378,9 @@ python3 scripts/binance_market_snapshot.py analyze --symbols BTCUSDT,ETHUSDT
 
 中长线消息必须能持续影响未来数天至数周的供需或估值，例如协议升级、代币经济变化、可核验的采用进展、监管节点或宏观流动性变化。一次性社交热度、已完成空投和缺少后续路径的旧闻只能降为观察；预期事件要同时检查解锁、资金费率和“买预期卖事实”风险。
 
-### 6. 技术面确认
+### 6. 技术面辅助（20%）
+
+技术面不再与消息面并列为同权硬门槛。四周期仍需分析并披露，但主要用于避开最差入场、确定失效位和控制仓位；直接来源确认、传导清晰且尚未充分定价的强消息，不得仅因 1h/15m 尚未完全确认而自动降为只观察。
 
 按从高到低周期判断：
 
@@ -391,6 +393,10 @@ python3 scripts/binance_market_snapshot.py analyze --symbols BTCUSDT,ETHUSDT
 中长线按独立逻辑确认：1d 判断 EMA20/EMA50、摆动高低点和日线收盘是否同向；4h 必须形成突破回踩、趋势延续基地或有证据的反转结构；1h 只负责择时。中长线止损不得取 15m 局部低点/高点，日线收盘破坏主结构、持续催化被证伪或预计持有期资金费率侵蚀目标时才判定逻辑失效。每天和重大事件后重估一次，不因盘中单根尖峰频繁反手。
 
 技术条件用于选择“现在市价入场”或“近价限价入场”：
+
+- 消息确认仓：消息与技术择时均较完整，可按正常风险档评估。
+- 消息抢跑小仓：直接来源已确认、消息失效位和价格止损明确、保守净盈亏比 `>1`，但短周期确认尚不完整；允许列为 `可开仓`，必须降低单笔风险并醒目标注抢跑属性。未确认传闻不得进入。
+- 严重追高、关键结构已反向失效、无法设置合理止损、极端 OI/资金费率拥挤或保守净盈亏比 `<=1` 时，技术/风险层仍可一票否决。
 
 - 市价：所需收盘、突破或回踩已经发生；草案生成时记录参考价，用户精确确认后按执行时市价成交，不使用价格漂移拒单门槛。
 - 近价限价：4h/1h 方向和消息逻辑已经成立，仅等待价格回到已验证的 15m 支撑/阻力或突破回踩位。挂单价距离最新价不得超过 `min(0.5%, 0.25 × 15m ATR / 最新价)`，且挂单成交后的保守净盈亏比仍须严格大于 1。
@@ -554,7 +560,7 @@ python3 scripts/binance_market_snapshot.py analyze --symbols BTCUSDT,ETHUSDT
 6. 逐币正文必须写透新闻事实、原始来源可靠性、关键数字、利多/利空因果链、反向解释、落地/定价证据和后续验证点；不能只写标题、来源和一句方向判断。股票代币还必须拆分底层公司消息、Binance 合约工具消息和正股交易时段确认。
 7. 逐币深度分析必须补齐 `news_fact`、`economic_channel`、`value_capture`、`pricing_status`、`move_attribution`、`structure_trigger`、`invalidation`、`net_payoff_check`、`chain_status` 和 `chain_missing`；链条不完整时只能是 `只观察`，不得生成确认订单草案。
 8. 用户声明“新开了”“已经开了”“按上一份报告开了”的标的必须进入 active 跟踪；后续报告应放在 `position_followups`，不能只作为新候选展示。缺少方向或数量时标注待补成交细节，但仍要跟踪消息落地。若本轮登记了 `observed_price_at_tracking`，直接将其写入 `entry`，并标记 `entry_source=user_declared_open_tracking_price`；该值是复盘基线，不得冒充交易所实际成交回报。
-9. 全市场报告的 JSON 顶层必须包含 `market_hotspots`、`screening_counts`、`liquidity_survivors` 和 `research_audit`，并在 `meta.full_universe_research=true` 时通过渲染器完整性校验。`screening_counts` 必须包含 `liquidity_threshold_quote_volume_usdt=10000000`、`post_filter_survivors`、`researched_survivors`、`analyzed_survivors`、`reported_risk_eligible` 和 `deep_analysis`；任一幸存标的缺少实际检索或四周期分析记录，集合不一致，或任一中高及以下风险标的缺少候选矩阵/逐币章节，渲染器必须拒绝生成报告。
+9. 全市场报告的 JSON 顶层必须包含 `market_hotspots`、`screening_counts`、`liquidity_survivors` 和 `research_audit`，并在 `meta.full_universe_research=true` 时通过渲染器完整性校验。`screening_counts` 必须包含 `liquidity_threshold_quote_volume_usdt=10000000`、`post_filter_survivors`、`researched_survivors`、`analyzed_survivors`、`reported_risk_eligible` 和 `deep_analysis`；任一幸存标的缺少实际检索、四周期分析或 `coin_reports` 完整逐币章节，三个 symbol 集合不一致，或 `deep_analysis != post_filter_survivors`，渲染器必须拒绝生成报告。
 10. 新报告必须设置 `meta.report_contract="v5"`；v5 缺少 `market_hotspots` 时渲染器必须拒绝生成。每个逐币和持仓条目必须通过 `news_evidence` 或 `source_refs` 绑定消息，章节内显示可点击原始来源、来源层级、可靠性和关键事实。`风险与落地速览` 中已开仓标的置顶，高风险、已抢跑、需降风险或禁止追入项醒目标红。
 11. 生成后检查文件存在；最终回复第一屏必须给：
 

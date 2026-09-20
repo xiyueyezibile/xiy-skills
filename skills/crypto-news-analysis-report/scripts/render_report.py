@@ -866,8 +866,8 @@ def validate_full_universe_research(payload: Dict[str, object]) -> None:
             raise ValueError("research_audit[%d].checked_sources must contain visited URLs" % index)
         if not isinstance(item.get("queries"), list) or not item["queries"]:
             raise ValueError("research_audit[%d].queries must be a non-empty list" % index)
-        if not isinstance(item.get("deep_analysis_required"), bool):
-            raise ValueError("research_audit[%d].deep_analysis_required must be boolean" % index)
+        if item.get("deep_analysis_required") is not True:
+            raise ValueError("research_audit[%d].deep_analysis_required must be true" % index)
         if item.get("analysis_completed") is not True:
             raise ValueError("research_audit[%d].analysis_completed must be true" % index)
         symbol = str(item["symbol"])
@@ -906,10 +906,8 @@ def validate_full_universe_research(payload: Dict[str, object]) -> None:
             raise ValueError("full-universe research has unresolved fetch failure for %s" % symbol)
         if outcome in {"opportunity", "watch"} and symbol not in candidate_symbols:
             raise ValueError("researched opportunity/watch missing from candidates: %s" % symbol)
-        if outcome == "opportunity" and item.get("deep_analysis_required") is not True:
-            raise ValueError("opportunity must require deep analysis: %s" % symbol)
-        if item.get("deep_analysis_required") is True and symbol not in report_symbols:
-            raise ValueError("deep-analysis symbol missing from coin_reports: %s" % symbol)
+        if symbol not in report_symbols:
+            raise ValueError("full-universe survivor missing from coin_reports: %s" % symbol)
 
     if len(set(audit_symbols)) != survivor_count:
         raise ValueError("research_audit symbols must be unique and match survivor count")
@@ -918,6 +916,13 @@ def validate_full_universe_research(payload: Dict[str, object]) -> None:
         extra = sorted(set(audit_symbols) - set(liquidity_by_symbol))
         raise ValueError(
             "research_audit symbols must exactly match liquidity_survivors; missing=%s extra=%s"
+            % (", ".join(missing), ", ".join(extra))
+        )
+    if report_symbols != set(liquidity_by_symbol):
+        missing = sorted(set(liquidity_by_symbol) - report_symbols)
+        extra = sorted(report_symbols - set(liquidity_by_symbol))
+        raise ValueError(
+            "coin_reports symbols must exactly match liquidity_survivors; missing=%s extra=%s"
             % (", ".join(missing), ", ".join(extra))
         )
     missing_report_symbols = sorted(reportable_symbols - report_symbols)
@@ -938,8 +943,10 @@ def validate_full_universe_research(payload: Dict[str, object]) -> None:
             "screening_counts.reported_risk_eligible does not match risk <= 中高 audit rows"
         )
     deep_count = counts.get("deep_analysis")
-    if deep_count is not None and deep_count != len(report_symbols):
-        raise ValueError("screening_counts.deep_analysis does not match coin_reports")
+    if deep_count != survivor_count or deep_count != len(report_symbols):
+        raise ValueError(
+            "screening_counts.deep_analysis must match post_filter_survivors and coin_reports"
+        )
 
 
 def render(payload: Dict[str, object]) -> str:
