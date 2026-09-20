@@ -543,6 +543,37 @@ npx skills add xiyueyezibile/xiy-skills@skill-manager -g -y
 - 列出所有可用的skills供用户选择
 - 提供安装命令和详细信息
 
+### context-manager
+
+本地上下文管理 Skill：通过 WebSocket 网页维护多个独立的 TODO、文字和图片条目，支持启用/停用、历史保留和一键复用，并在每次对话前按启用条目输出可注入 AI 的结构化上下文；当用户要求跨轮保存任务、资料或对话上下文时使用。
+
+安装：
+
+```bash
+npx skills add xiyueyezibile/xiy-skills@context-manager -g -y
+```
+
+启动本地编辑器：
+
+```bash
+python3 ~/.trae-cn/skills/context-manager/scripts/context_manager.py start
+```
+
+默认打开 `http://127.0.0.1:8765`。网页通过 `/ws` 使用 WebSocket 实时同步，文字保存到 `~/.context-manage/context.json`，图片保存到 `~/.context-manage/images/`。读取可注入 AI 的上下文：
+
+```bash
+python3 ~/.trae-cn/skills/context-manager/scripts/context_manager.py read
+python3 ~/.trae-cn/skills/context-manager/scripts/context_manager.py read --format json
+```
+
+要在每次用户消息提交前自动注入，把宿主的 `UserPromptSubmit` hook 指向：
+
+```bash
+python3 ~/.trae-cn/skills/context-manager/scripts/context_manager_hook.py
+```
+
+该 hook 从 stdin 读取宿主 JSON，并通过 `additionalContext` 返回上下文；不会上传本地图片或对话内容，服务只监听 `127.0.0.1`。
+
 ### reply-generator
 
 根据聊天记录、场景描述和模板要求生成自然回复，尽量减少 AI 味，并贴近上下文中的说话习惯
