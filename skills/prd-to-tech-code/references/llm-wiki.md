@@ -23,6 +23,7 @@
       repositories.md
       sources.md
       visual-materials.md
+      mock-scenarios.md
       code-evidence.md
       requirements.md
       decisions.md
@@ -40,6 +41,7 @@
 - `repositories.md`：该业务涉及的一个或多个仓库、仓库职责、改动范围和跨仓库关系
 - `sources.md`：信息来源摘要，包含 PRD、已有技术方案、聊天记录、会议纪要、其他文档、用户口头说明、仓库证据和手动纠正
 - `visual-materials.md`：资料图、设计稿、PRD 截图、流程图、架构图、时序图、改造前后示意和关键表格的来源与用途
+- `mock-scenarios.md`：可复现真实业务场景的脱敏 Mock 数据、触发条件、状态、步骤和验收结果
 - `code-evidence.md`：从仓库代码读取到的稳定事实，例如路由、页面、组件、类型、接口封装、权限、配置、数据流和既有业务规则
 - `requirements.md`：稳定需求、业务规则、用户路径和状态流转
 - `decisions.md`：已确认的技术决策、取舍和决策依据
@@ -101,6 +103,7 @@
 - 聊天记录、会议纪要、评论区讨论、口头补充
 - 用户在对话中的手动纠正和临时决策
 - 设计稿说明、接口文档、数据表说明、埋点文档
+- 真实接口响应、请求参数、页面初始化状态、权限/实验开关和目标场景输入
 - PRD 截图、设计稿、流程图、架构图、时序图、改造前后示意和关键表格
 - 仓库代码、已有配置、类型定义、路由、接口封装和运行约束
 
@@ -145,6 +148,35 @@
 ```
 
 记录时只保存来源、摘要和用途；如材料包含敏感信息，优先做脱敏摘要，不复制原图内容。
+
+## Mock scenarios policy
+
+真实 Mock 数据不能只作为普通来源附件保存，必须按可复现业务场景独立记录到 `mock-scenarios.md`。每个场景至少包含：
+
+```md
+## M-001: 场景标题
+
+- scenario_id：
+- 入口：
+- 触发条件：
+- 请求参数：
+- 响应 / 初始化数据：
+- 页面状态：
+- 关联资源：
+- 复现步骤：
+- 预期结果：
+- 来源 / 采集时间 / 数据版本：
+- 脱敏说明：
+- 关联需求点：
+```
+
+保存规则：
+
+- 优先来源于真实接口契约、真实页面调用点、用户提供的线上样本、fixture 或组件验证材料。
+- 必须脱敏账号、手机号、token、cookie、订单号、地址和客户隐私；保留字段结构、枚举、数量级和边界值。
+- 每个场景使用稳定 `scenario_id`，技术方案的协议、状态和验收章节必须引用它。
+- 可以保存脱敏后的最小 JSON 或 fixture 路径，但不能把敏感原始响应直接写入 Wiki。
+- 没有足够数据时记录缺口、需要补充的字段和人工复现步骤，不得用无依据的演示数据冒充真实 Mock。
 
 ## Repository policy
 
@@ -196,7 +228,8 @@
 3. 读取业务目录下的 `index.md`
 4. 读取 `repositories.md` 和 `code-evidence.md`，确认已知仓库边界与代码事实
 5. 按任务需要读取 `visual-materials.md`、`corrections.md`、`requirements.md`、`decisions.md`、`constraints.md`、`sources.md`
-6. 再结合当前用户输入和最新仓库代码形成技术方案或执行计划
+6. 如果任务涉及页面、接口或状态复现，读取 `mock-scenarios.md`
+7. 再结合当前用户输入和最新仓库代码形成技术方案或执行计划
 
 当存在冲突时，优先级为：
 
@@ -217,6 +250,7 @@
 - 用户提供了已有技术方案、技术设计、改造方案、方案草稿或任务拆解，需要作为来源摘要保存
 - 用户纠正了需求理解、接口含义、业务范围、状态流转、权限或技术方案
 - 识别出后续评审或实现会复用的资料图、设计稿、PRD 截图、流程图、架构图、时序图或改造前后示意
+- 收集到可以复现页面、接口或状态分支的真实 Mock 场景
 - 识别出新的相关仓库、仓库职责、跨仓库契约或代码入口
 - 从仓库代码读到了后续会复用的稳定事实、约束、接口封装、类型、权限或状态流转
 - 发现 PRD 与仓库事实、接口文档或历史决策冲突
@@ -235,12 +269,13 @@
 1. 业务归属变化写入根目录 `config.json`
 2. 新信息无缝并入对应文件，不新增噪声小节
 3. 资料图材料写入 `visual-materials.md`
-4. 仓库边界写入 `repositories.md`，代码事实写入 `code-evidence.md`
-5. 手动纠正写入 `corrections.md`，并同步更新 `index.md` 的关键结论
-6. 技术方案更新写入 `technical-plan.md`；如果输入是已有技术方案，先作为来源写入 `sources.md`，再把归一化后的模板方案写入 `technical-plan.md`
-7. `technical-plan.md` 必须保留必要资料图引用和文件级代码落位清单，必要时链接到 `decisions.md`
-8. 对旧结论不要直接删除，除非用户明确要求；优先标注“已被 C-xxx 修正”
-9. 同一业务内去重，避免把同一纠正、资料图或代码事实拆成多条近似记录
+4. 真实 Mock 场景和数据摘要写入 `mock-scenarios.md`
+5. 仓库边界写入 `repositories.md`，代码事实写入 `code-evidence.md`
+6. 手动纠正写入 `corrections.md`，并同步更新 `index.md` 的关键结论
+7. 技术方案更新写入 `technical-plan.md`；如果输入是已有技术方案，先作为来源写入 `sources.md`，再把归一化后的模板方案写入 `technical-plan.md`
+8. `technical-plan.md` 必须保留必要资料图、Mock 场景引用和文件级代码落位清单，必要时链接到 `decisions.md`
+9. 对旧结论不要直接删除，除非用户明确要求；优先标注“已被 C-xxx 修正”
+10. 同一业务内去重，避免把同一纠正、资料图、Mock 场景或代码事实拆成多条近似记录
 
 ## Initialization
 
@@ -290,6 +325,7 @@ businesses/<business-slug>/
   repositories.md
   sources.md
   visual-materials.md
+  mock-scenarios.md
   code-evidence.md
   requirements.md
   decisions.md
