@@ -1,0 +1,4 @@
+interface:
+  display_name: "图片反推提示词"
+  short_description: "图片反推与人物替换，默认检查人体物理关系、手指结构和画面自然感"
+  default_prompt: "使用 $image-to-prompt 分析这张参考图，反推可复制的生成提示词。"

@@ -42,6 +42,25 @@ Skill 包内同时提供 [机器人 Agent 能力配置](skills/xiy-llm-wiki/agen
 
 `wiki/current-work.md` 会记录结构化工作现场：仓库路径、分支与 HEAD、upstream 领先/落后关系、暂存/未暂存/未跟踪文件、改动范围与规模，以及最近 3 次提交；摘要只归纳 Git 可验证事实，不根据文件名脑补业务目标。
 
+### image-to-prompt
+
+根据参考图片反推可复制的图像生成提示词，支持完整画面还原、只提取风格、保留风格更换人物，以及按媒介减少 AI 感。人物替换时区分原图的构图、动作与画风和新角色的身份、体型与服装，并按画面检查人体连接、物理关系及手部结构。
+
+安装：
+
+```bash
+npx skills add xiyueyezibile/xiy-skills@image-to-prompt -g -y
+```
+
+使用时附上参考图片，并说明需要保留和替换的内容，例如：
+
+```text
+$image-to-prompt 保留这张图的姿势、神态和画风，将人物替换为我提供的角色参考，身材比例遵循新角色。
+$image-to-prompt 只提取这张图的画风，用 [主体] 留出内容插槽。
+```
+
+默认交付视觉锚点和一版可直接复制的提示词；反推本身不会触发图像生成，也不会声称找回原始提示词、模型或 seed。技能包包含视觉术语校准、自然化参考和界面配置，详见 [SKILL.md](skills/image-to-prompt/SKILL.md)。
+
 ### find skills
 
 ```bash
