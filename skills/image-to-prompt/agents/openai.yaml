@@ -1,4 +1,4 @@
 interface:
-  display_name: "图片反推提示词"
-  short_description: "图片反推与人物替换，支持通用模板或角色特征提取，检查人体物理与手指脚趾"
-  default_prompt: "使用 $image-to-prompt 反推可复制的提示词：只给原图时提供通用替换模板；指定新角色素材时提取其特征，按可见性检查手指与脚趾结构。"
+  display_name: "图片提示词与场景创作"
+  short_description: "反推、人物替换与人物图场景创作，设计动作光照并检查身份和结构"
+  default_prompt: "使用 $image-to-prompt 按我的目的处理参考图：还原原图、提取角色，或根据人物图与描述设计新场景和姿势；只写提示词时交付文字，明确要求出图时生成图片。"
